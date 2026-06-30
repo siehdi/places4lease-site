@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Places4Lease — Rentals across Liberia</title>
+<style>
+:root{
+  --ink:#1C2E29; --paper:#F1ECE3; --surface:#FFFFFF;
+  --brass:#B8862E; --brass-dark:#8F6A22;
+  --whatsapp:#25D366; --whatsapp-dark:#1DA851;
+  --border:#E3DCD1; --muted:#7A7167;
+  --radius:16px; --shadow:0 2px 10px rgba(28,46,41,.08);
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;}
+input,select,textarea{font-family:inherit;}
+h1,h2,h3{margin:0;letter-spacing:-0.02em;}
+a{text-decoration:none;color:inherit;}
+#app{max-width:480px;margin:0 auto;min-height:100vh;position:relative;padding-bottom:78px;}
+.hidden{display:none !important;}
+#loadingOverlay{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;z-index:200;font-weight:700;color:var(--muted);}
+
+.offline-banner{background:var(--ink);color:var(--paper);text-align:center;font-size:13px;padding:8px 12px;font-weight:600;}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 8px;}
+.brand{font-weight:800;font-size:19px;letter-spacing:-0.03em;display:flex;align-items:center;gap:6px;}
+.brand span b{color:var(--brass-dark);}
+.icon-btn{font-size:19px;padding:6px;border-radius:50%;}
+.icon-btn:hover{background:rgba(0,0,0,.04);}
+.desktop-nav{display:none;}
+
+.search-row{padding:0 18px 10px;}
+.search-row input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:12px;background:var(--surface);font-size:15px;outline:none;}
+.search-row input:focus{border-color:var(--brass);}
+.price-row{display:flex;gap:8px;margin-top:8px;}
+.price-row input{padding:9px 10px;font-size:13.5px;}
+
+.chip-row{display:flex;gap:8px;padding:2px 18px 12px;overflow-x:auto;scrollbar-width:none;}
+.chip-row::-webkit-scrollbar{display:none;}
+.chip{flex:0 0 auto;padding:7px 16px;border-radius:999px;background:var(--surface);border:1px solid var(--border);font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap;}
+.chip.active{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+
+.view-controls{display:flex;align-items:center;justify-content:space-between;padding:0 18px 14px;gap:10px;}
+.seg-toggle{display:flex;background:var(--surface);border:1px solid var(--border);border-radius:11px;padding:3px;}
+.seg{padding:7px 14px;border-radius:8px;font-size:13.5px;font-weight:700;color:var(--muted);}
+.seg.active{background:var(--brass);color:#fff;}
+#sortSelect{border:1px solid var(--border);background:var(--surface);border-radius:10px;padding:7px 8px;font-size:13px;color:var(--ink);}
+
+.view{display:none;padding:0 18px 18px;}
+.view.active{display:block;}
+.section-title{font-size:20px;font-weight:800;margin:8px 0 14px;}
+.grid{display:grid;grid-template-columns:1fr;gap:14px;}
+.empty-state{text-align:center;padding:50px 20px;color:var(--muted);}
+.empty-state .big{font-size:38px;margin-bottom:8px;}
+
+.card{background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);position:relative;border:1px solid var(--border);}
+.card-photo{height:150px;display:flex;align-items:center;justify-content:center;position:relative;color:#fff;overflow:hidden;}
+.card-photo img{width:100%;height:100%;object-fit:cover;}
+.card-icon{width:54px;height:54px;opacity:.95;}
+.photo-badge{position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,.45);color:#fff;font-size:11px;padding:3px 8px;border-radius:999px;font-weight:600;}
+.plate-tag{position:absolute;top:10px;left:10px;background:var(--brass);color:#fff;font-weight:800;font-size:11.5px;padding:5px 10px;border-radius:6px;letter-spacing:.02em;box-shadow:0 2px 4px rgba(0,0,0,.2);transform:rotate(-2deg);}
+.key-save{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.9);width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:17px;transition:transform .25s;}
+.key-save.saved{color:var(--brass-dark);transform:rotate(75deg);}
+.card-body{padding:12px 14px 14px;}
+.card-title{font-size:15px;font-weight:700;margin-bottom:2px;}
+.card-loc{font-size:13px;color:var(--muted);margin-bottom:8px;}
+.card-price{font-size:15.5px;font-weight:800;color:var(--brass-dark);}
+.card-price span{font-size:12px;font-weight:600;color:var(--muted);}
+.verified-badge{background:#E4F4EA;color:#1F8A4C;font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;margin-left:4px;white-space:nowrap;}
+.featured-badge{background:#FBF3E4;color:var(--brass-dark);font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;margin-left:4px;white-space:nowrap;}
+
+.map-view{height:60vh;border-radius:var(--radius);overflow:hidden;position:relative;background:repeating-linear-gradient(45deg,#E7E0D4 0 14px,#EFE9DD 14px 28px);border:1px solid var(--border);}
+.map-pin{position:absolute;background:var(--ink);color:#fff;font-size:11px;font-weight:700;padding:5px 9px;border-radius:8px 8px 8px 2px;transform:translate(-50%,-100%);cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.25);}
+
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;max-width:480px;margin:0 auto;background:var(--surface);border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:center;padding:8px 4px 10px;z-index:30;}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:18px;color:var(--muted);padding:4px 8px;border-radius:10px;}
+.nav-item span{font-size:10px;font-weight:700;}
+.nav-item.active{color:var(--brass-dark);}
+.nav-post{background:var(--brass);color:#fff;width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;margin-top:-22px;box-shadow:0 3px 8px rgba(184,134,46,.45);}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(20,28,25,.5);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
+.modal-sheet{background:var(--surface);width:100%;max-width:480px;max-height:90vh;overflow-y:auto;border-radius:24px 24px 0 0;padding:18px 20px 28px;position:relative;}
+.modal-close{position:absolute;top:14px;right:16px;font-size:20px;background:rgba(0,0,0,.06);width:32px;height:32px;border-radius:50%;z-index:2;}
+
+.detail-photo{height:210px;border-radius:14px;display:flex;align-items:center;justify-content:center;color:#fff;margin-top:6px;position:relative;overflow:hidden;}
+.detail-photo img{width:100%;height:100%;object-fit:cover;}
+.detail-icon{width:78px;height:78px;}
+.dots{display:flex;justify-content:center;gap:6px;margin:8px 0 4px;}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--border);}
+.dot.on{background:var(--brass);}
+.detail-plate{display:inline-block;background:var(--brass);color:#fff;font-weight:800;font-size:12px;padding:5px 10px;border-radius:6px;margin:10px 0 8px;}
+.detail-type{display:inline-block;background:var(--paper);border:1px solid var(--border);font-weight:700;font-size:11px;padding:4px 9px;border-radius:6px;margin-left:6px;color:var(--muted);}
+.detail-title{font-size:19px;font-weight:800;margin-bottom:2px;}
+.detail-loc{color:var(--muted);font-size:13.5px;margin-bottom:10px;}
+.detail-price{font-size:21px;font-weight:800;color:var(--brass-dark);margin-bottom:14px;}
+.amenity-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.amenity-pill{background:var(--paper);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;}
+.cta-row{display:flex;gap:10px;}
+.btn{flex:1;text-align:center;padding:13px;border-radius:12px;font-weight:700;font-size:14.5px;display:block;}
+.btn-whatsapp{background:var(--whatsapp);color:#fff;}
+.btn-outline{border:1.5px solid var(--ink);color:var(--ink);}
+.btn-brass{background:var(--brass);color:#fff;}
+.btn-ghost{color:var(--muted);}
+
+.step-indicator{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.step-title{font-size:18px;font-weight:800;margin-bottom:14px;}
+.field-label{font-size:13px;font-weight:700;color:var(--muted);margin:14px 0 6px;}
+.field-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-size:15px;outline:none;background:var(--surface);color:var(--ink);}
+.field-input:focus{border-color:var(--brass);}
+.field-hint{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.4;}
+.opt-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+.opt-row.three{grid-template-columns:1fr 1fr 1fr;}
+.opt-btn{padding:11px 6px;border:1.5px solid var(--border);border-radius:11px;font-weight:700;font-size:13px;text-align:center;}
+.opt-btn.active{border-color:var(--brass);background:#FBF3E4;color:var(--brass-dark);}
+.amenity-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
+.stepper{display:flex;align-items:center;gap:14px;margin-top:6px;}
+.stepper button{width:34px;height:34px;border:1.5px solid var(--border);border-radius:9px;font-size:17px;font-weight:700;}
+.stepper .val{font-size:16px;font-weight:700;min-width:24px;text-align:center;}
+.verify-box{background:var(--paper);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:14px;}
+.verify-ok{color:var(--whatsapp-dark);font-weight:700;font-size:14px;display:flex;align-items:center;gap:6px;}
+.loc-box{background:var(--paper);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:10px;text-align:center;}
+.summary-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13.5px;gap:10px;}
+.summary-row span:first-child{color:var(--muted);flex:0 0 auto;}
+.summary-row span:last-child{text-align:right;}
+.step-nav{display:flex;gap:10px;margin-top:22px;}
+
+.photo-slot-grid{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.photo-slot{display:flex;align-items:center;gap:12px;border:1px solid var(--border);border-radius:12px;padding:9px 10px;}
+.photo-slot img{width:48px;height:48px;border-radius:8px;object-fit:cover;flex:0 0 auto;}
+.ph-placeholder{width:48px;height:48px;border-radius:8px;background:var(--paper);display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto;}
+.ph-label{flex:1;font-size:13px;font-weight:600;line-height:1.4;}
+.slot-btn{font-size:11.5px;font-weight:700;color:var(--brass-dark);background:var(--paper);padding:7px 10px;border-radius:8px;flex:0 0 auto;}
+
+.avatar-upload{display:flex;flex-direction:column;align-items:center;margin-top:10px;}
+.avatar-preview{width:100px;height:100px;border-radius:50%;background:var(--paper);border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:30px;overflow:hidden;margin-bottom:12px;}
+.avatar-preview img{width:100%;height:100%;object-fit:cover;}
+
+.disclaimer-box{background:var(--paper);border:1px solid var(--border);border-radius:12px;padding:14px;max-height:170px;overflow-y:auto;font-size:12.5px;line-height:1.55;color:#3a3a36;margin-top:10px;}
+.disclaimer-box p{margin:0 0 10px;}
+.agree-row{display:flex;align-items:flex-start;gap:10px;margin-top:14px;}
+.agree-row input{width:19px;height:19px;margin-top:1px;flex:0 0 auto;}
+.agree-row label{font-size:13px;line-height:1.5;color:#3a3a36;}
+
+.dash-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px;}
+.dash-top{display:flex;gap:12px;align-items:center;}
+.dash-thumb{width:54px;height:54px;border-radius:10px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;color:#fff;overflow:hidden;}
+.dash-thumb svg{width:30px;height:30px;}
+.dash-thumb img{width:100%;height:100%;object-fit:cover;}
+.dash-info{flex:1;}
+.dash-title{font-weight:700;font-size:14px;}
+.status-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;display:inline-block;margin-top:3px;}
+.status-badge.on{background:#E4F4EA;color:#1F8A4C;}
+.status-badge.off{background:#F4E4E4;color:#A33;}
+.dash-stats{font-size:11.5px;color:var(--muted);margin-top:3px;}
+.dash-actions{display:flex;gap:6px;font-size:14px;}
+.dash-actions button{padding:6px;border-radius:8px;background:var(--paper);}
+.dash-toggle-row{display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+.dash-toggle-row span{font-size:12.5px;font-weight:600;}
+
+.profile-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;}
+.profile-avatar{width:56px;height:56px;border-radius:50%;background:var(--brass);color:#fff;font-weight:800;font-size:22px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;overflow:hidden;}
+.profile-avatar img{width:100%;height:100%;object-fit:cover;}
+.profile-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);font-size:13.5px;gap:10px;}
+.profile-row span:first-child{color:var(--muted);}
+.profile-row span:last-child{text-align:right;}
+.verified-chip{background:#E4F4EA;color:#1F8A4C;font-weight:700;font-size:11px;padding:2px 8px;border-radius:999px;}
+.toggle-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;}
+.switch{width:42px;height:24px;border-radius:999px;background:var(--border);position:relative;flex:0 0 auto;}
+.switch.on{background:var(--brass);}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;}
+.switch.on::after{left:20px;}
+.safety-link{font-size:13px;font-weight:700;color:var(--brass-dark);text-decoration:underline;display:inline-block;margin-top:4px;}
+
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-size:13.5px;font-weight:600;z-index:90;box-shadow:0 4px 14px rgba(0,0,0,.25);max-width:90%;text-align:center;}
+
+@media (min-width:860px){
+  #app{max-width:1080px;padding-bottom:24px;}
+  .bottom-nav{display:none;}
+  .desktop-nav{display:flex;gap:6px;align-items:center;}
+  .desktop-nav button{padding:9px 14px;border-radius:10px;font-weight:700;font-size:13.5px;color:var(--ink);}
+  .desktop-nav button:hover{background:rgba(0,0,0,.04);}
+  .grid{grid-template-columns:repeat(3,1fr);}
+  .modal-overlay{align-items:center;}
+  .modal-sheet{border-radius:20px;max-width:560px;max-height:85vh;}
+}
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay">Loading Places4Lease…</div>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="ic-house" viewBox="0 0 100 100">
+    <path d="M10 55 L50 18 L90 55 V90 H10 Z" fill="none" stroke="white" stroke-width="6" stroke-linejoin="round"/>
+    <rect x="42" y="65" width="16" height="25" fill="none" stroke="white" stroke-width="5"/>
+    <rect x="20" y="60" width="14" height="14" fill="none" stroke="white" stroke-width="5"/>
+    <rect x="66" y="60" width="14" height="14" fill="none" stroke="white" stroke-width="5"/>
+  </symbol>
+  <symbol id="ic-apt" viewBox="0 0 100 100">
+    <rect x="22" y="12" width="56" height="78" fill="none" stroke="white" stroke-width="6"/>
+    <rect x="32" y="24" width="12" height="12" fill="white"/>
+    <rect x="56" y="24" width="12" height="12" fill="white"/>
+    <rect x="32" y="44" width="12" height="12" fill="white"/>
+    <rect x="56" y="44" width="12" height="12" fill="white"/>
+    <rect x="32" y="64" width="12" height="12" fill="white"/>
+    <rect x="56" y="64" width="12" height="12" fill="white"/>
+  </symbol>
+  <symbol id="ic-office" viewBox="0 0 100 100">
+    <rect x="15" y="15" width="70" height="75" fill="none" stroke="white" stroke-width="6"/>
+    <line x1="15" y1="36" x2="85" y2="36" stroke="white" stroke-width="4"/>
+    <line x1="15" y1="57" x2="85" y2="57" stroke="white" stroke-width="4"/>
+    <line x1="15" y1="78" x2="85" y2="78" stroke="white" stroke-width="4"/>
+    <rect x="42" y="78" width="16" height="12" fill="white"/>
+  </symbol>
+  <symbol id="ic-shop" viewBox="0 0 100 100">
+    <path d="M10 38 L50 15 L90 38 Z" fill="none" stroke="white" stroke-width="6" stroke-linejoin="round"/>
+    <rect x="18" y="38" width="64" height="52" fill="none" stroke="white" stroke-width="6"/>
+    <rect x="42" y="62" width="16" height="28" fill="none" stroke="white" stroke-width="5"/>
+    <rect x="22" y="50" width="14" height="10" fill="white"/>
+    <rect x="64" y="50" width="14" height="10" fill="white"/>
+  </symbol>
+</svg>
+
+<div id="app">
+  <div class="offline-banner hidden" id="offlineBanner">📴 Offline — showing saved listings</div>
+
+  <header class="topbar">
+    <div class="brand">🏠 <span>Places<b>4</b>Lease</span></div>
+    <div style="display:flex;align-items:center;gap:4px;">
+      <button class="icon-btn" onclick="openReportModal()" title="Report a concern">📢</button>
+      <button class="icon-btn" onclick="toggleSearch()">🔍</button>
+      <nav class="desktop-nav">
+        <button onclick="showView('saved')">🔑 Saved</button>
+        <button class="btn-brass" style="border-radius:10px;" onclick="handlePostTap()">➕ Post a listing</button>
+        <button onclick="showView('dashboard')">📋 Dashboard</button>
+        <button onclick="showView('profile')">👤 Profile</button>
+      </nav>
+    </div>
+  </header>
+
+  <div class="search-row hidden" id="searchRow">
+    <input type="text" id="searchInput" placeholder="Search community, district or county..." oninput="onSearch(this.value)">
+    <div class="price-row">
+      <input type="number" id="minPriceInput" class="field-input" placeholder="Min $" oninput="onPriceFilter()">
+      <input type="number" id="maxPriceInput" class="field-input" placeholder="Max $" oninput="onPriceFilter()">
+      <button class="btn btn-outline" style="flex:0 0 auto;padding:9px 14px;font-size:13px;" onclick="resetFilters()">↺ Reset</button>
+    </div>
+  </div>
+
+  <div class="chip-row" id="typeChips"></div>
+
+  <div class="view-controls">
+    <div class="seg-toggle" id="viewToggle">
+      <button class="seg active" data-mode="list" onclick="setMode('list')">☰ List</button>
+      <button class="seg" data-mode="map" onclick="setMode('map')">🗺️ Map</button>
+    </div>
+    <select id="sortSelect" onchange="onSort(this.value)">
+      <option value="newest">Newest</option>
+      <option value="price-asc">Price: Low → High</option>
+      <option value="price-desc">Price: High → Low</option>
+    </select>
+  </div>
+
+  <main id="view-home" class="view active">
+    <section id="listGrid" class="grid"></section>
+    <section id="mapSection" class="map-view hidden"><div id="mapPins" style="position:relative;width:100%;height:100%;"></div></section>
+  </main>
+
+  <main id="view-saved" class="view">
+    <h2 class="section-title">Saved listings</h2>
+    <section id="savedGrid" class="grid"></section>
+  </main>
+
+  <main id="view-dashboard" class="view">
+    <h2 class="section-title">My listings</h2>
+    <section id="dashGrid"></section>
+  </main>
+
+  <main id="view-profile" class="view"></main>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-view="home" onclick="showView('home')">🏠<span>Home</span></button>
+    <button class="nav-item" data-view="saved" onclick="showView('saved')">🔑<span>Saved</span></button>
+    <button class="nav-item nav-post" onclick="handlePostTap()">➕</button>
+    <button class="nav-item" data-view="dashboard" onclick="showView('dashboard')">📋<span>Listings</span></button>
+    <button class="nav-item" data-view="profile" onclick="showView('profile')">👤<span>Profile</span></button>
+  </nav>
+
+  <div class="modal-overlay hidden" id="detailModal" onclick="if(event.target===this)closeModal('detailModal')">
+    <div class="modal-sheet" id="detailSheet"></div>
+  </div>
+  <div class="modal-overlay hidden" id="regModal" onclick="if(event.target===this)closeModal('regModal')">
+    <div class="modal-sheet" id="regSheet"></div>
+  </div>
+  <div class="modal-overlay hidden" id="listingModal" onclick="if(event.target===this)closeModal('listingModal')">
+    <div class="modal-sheet" id="listingSheet"></div>
+  </div>
+  <div class="modal-overlay hidden" id="safetyModal" onclick="if(event.target===this)closeModal('safetyModal')">
+    <div class="modal-sheet" id="safetySheet">
+      <button class="modal-close" onclick="closeModal('safetyModal')">✕</button>
+      <h2 style="margin-bottom:14px;">Safety &amp; Terms</h2>
+      <div id="disclaimerText" style="font-size:13.5px;line-height:1.6;color:#3a3a36;"></div>
+    </div>
+  </div>
+  <div class="modal-overlay hidden" id="reportModal" onclick="if(event.target===this)closeModal('reportModal')">
+    <div class="modal-sheet" id="reportSheet">
+      <button class="modal-close" onclick="closeModal('reportModal')">✕</button>
+      <h2 style="margin-bottom:4px;">Report a concern</h2>
+      <p class="field-hint" style="margin-top:0;">Scams, complaints, or suggestions — anyone can use this, no account needed.</p>
+      <div class="field-label">What is this about?</div>
+      <div class="opt-row">
+        <button class="opt-btn" id="catScam" onclick="setReportCat('Scam')">🚩 Scam</button>
+        <button class="opt-btn" id="catComplaint" onclick="setReportCat('Complaint')">😕 Complaint</button>
+        <button class="opt-btn" id="catRec" onclick="setReportCat('Recommendation')">💡 Idea</button>
+        <button class="opt-btn" id="catOther" onclick="setReportCat('Other')">Other</button>
+      </div>
+      <div class="field-label">Tell us what happened</div>
+      <textarea class="field-input" id="reportMsg" rows="4" placeholder="Describe the issue or your suggestion..."></textarea>
+      <div class="field-label">Your WhatsApp number (optional, so we can follow up)</div>
+      <input class="field-input" id="reportContact" placeholder="+231 ...">
+      <button class="btn btn-whatsapp" style="display:block;width:100%;margin-top:16px;" onclick="submitReport()">Submit report</button>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+</div>
+
+<script>
+const COUNTIES = ['Bomi','Bong','Gbarpolu','Grand Bassa','Grand Cape Mount','Grand Gedeh','Grand Kru','Lofa','Margibi','Maryland','Montserrado','Nimba','River Cess','River Gee','Sinoe'];
+const RENTAL_TYPES = ['Residential','Office','Store/Shop'];
+const PAY_FREQ = ['6 months','1 year','Negotiable'];
+const AMENITIES = {
+  lec:'⚡ Electricity (LEC)', generator:'🔌 Alternative Electricity (Generator)',
+  lwsc:'🚰 LWSC (piped borne water)', reservoir:'🛢️ Reservoir/Polytank',
+  well:'🪣 Well/Hand Pump', lra:'🧾 LRA taxes payment up to date',
+  parking:'🚗 Parking lot for cars', security:'🔒 Security', fence:'🧱 In fence', fireAlarm:'🔥 Fire alarm available',
+  singleApt:'🏢 Single apartment', singleHouse:'🏠 Single house', duplex:'🏘️ Duplex/multiplex',
+  singleStoreStandalone:'🏪 Single store (stand-alone)', storeInBuilding:'🏬 Store attached to a building',
+  multiOffice:'🏢 Multiple offices in a building', singleOfficeBuilding:'🏛️ Single office/single building',
+  sharedWorkplace:'🧑‍🤝‍🧑 Shared workplaces',
+  kitchen:'🍳 Kitchen', frontBackEntrance:'🚪 Front & back entrances',
+  petsAllowed:'🐾 Pets allowed', petsNotAllowed:'🚫🐾 Pets not allowed',
+  singleNoChildren:'🧍 Single/couple, no children', familyWithChildren:'👨‍👩‍👧 Family with children allowed',
+  familyNoChildrenAllowed:'🚫👨‍👩‍👧 Family with children not allowed', singleOccupantOnly:'👤 Single occupant only'
+};
+const AMENITY_GROUPS = [
+  {title:'🔧 Utilities', keys:['lec','generator','lwsc','reservoir','well','lra']},
+  {title:'🅿️ Parking & safety', keys:['parking','security','fence','fireAlarm']},
+  {title:'🏗️ Building type', keys:['singleApt','singleHouse','duplex','singleStoreStandalone','storeInBuilding','multiOffice','singleOfficeBuilding','sharedWorkplace']},
+  {title:'🚪 Features', keys:['kitchen','frontBackEntrance']},
+  {title:'👨‍👩‍👧 Occupancy preferences', keys:['petsAllowed','petsNotAllowed','singleNoChildren','familyWithChildren','familyNoChildrenAllowed','singleOccupantOnly']}
+];
+const PHOTO_SLOTS = [
+  {key:'rooms', label:'Inside — rooms'},
+  {key:'sitting', label:'Inside — sitting room'},
+  {key:'kitchen', label:'Inside — kitchen'},
+  {key:'back', label:'Outside — back of building'},
+  {key:'front', label:'Entire building — front', main:true}
+];
+const PLATFORM_WHATSAPP_RAW = '231770000001';
+const PLATFORM_WHATSAPP_DISPLAY = '+231 77 000 0001';
+const SITE_CONTACT = {phone:'+231 77 000 0000', phoneRaw:'+231770000000', email:'info@places4lease.com', address:'Tubman Boulevard, Sinkor, Monrovia, Liberia'};
+const DISCLAIMER_HTML = `
+  <p><strong>Places4Lease.com is completely free.</strong> We do not charge any fee to list a property or to browse listings on this site.</p>
+  <p>Places4Lease.com is not a party to any transaction between users. We do not verify the identity, ownership, or accuracy of every listing, and we take no responsibility for any agreement, payment, or dispute between a landlord and a renter. You are responsible for verifying who you are dealing with before making any payment or commitment.</p>
+  <p>Listings marked "Verified" have been visited in person by our team. Unmarked listings have not yet been checked — please exercise extra caution, meet in safe, public places where possible, and never send money before confirming a property is genuine.</p>
+  <p>If you encounter a scam, an inaccurate listing, or unethical behavior from anyone on this site, please use the 📢 report button to tell us so we can investigate and protect other users.</p>`;
+const AGREE_TEXT = "I confirm that the information I have provided is accurate, and I agree not to use Places4Lease.com for any illegal, fraudulent, or abusive activity. I understand Places4Lease.com is a free platform and is not responsible for transactions between users.";
+
+let DATA = [
+  {id:1,rentalType:'Residential',county:'Montserrado',district:'District #4',community:'Sinkor',ownerContact:'231771234001',rooms:3,restrooms:1,price:450,freq:'1 year',amenities:['lec','parking','security'],available:true,mine:false,views:14,color:'#1C6B5A',top:30,left:45,photoCount:4,lat:6.2907,lng:-10.7605,verified:true,premium:false,mainPhoto:null},
+  {id:2,rentalType:'Residential',county:'Montserrado',district:'District #9',community:'ELWA Junction',ownerContact:'231880222002',rooms:1,restrooms:1,price:180,freq:'6 months',amenities:['lec','singleApt'],available:true,mine:false,views:9,color:'#B8862E',top:55,left:68,photoCount:3,lat:6.2700,lng:-10.7000,verified:false,premium:false,mainPhoto:null},
+  {id:3,rentalType:'Residential',county:'Montserrado',district:'District #15',community:'Paynesville',ownerContact:'231776555003',rooms:4,restrooms:2,price:600,freq:'1 year',amenities:['generator','well','security','fence','singleHouse'],available:true,mine:false,views:34,color:'#3E7CB1',top:72,left:60,photoCount:5,lat:6.2833,lng:-10.6833,verified:true,premium:true,mainPhoto:null},
+  {id:4,rentalType:'Office',county:'Montserrado',district:'District #10',community:'Congo Town',ownerContact:'231775999004',rooms:3,restrooms:2,price:500,freq:'Negotiable',amenities:['lec','generator','parking'],available:true,mine:false,views:6,color:'#A8553E',top:45,left:35,photoCount:3,lat:6.2800,lng:-10.7400,verified:false,premium:false,mainPhoto:null},
+  {id:5,rentalType:'Residential',county:'Montserrado',district:'District #13',community:'Mamba Point',ownerContact:'231770444005',rooms:5,restrooms:3,price:850,freq:'1 year',amenities:['lec','generator','parking','security','duplex'],available:true,mine:false,views:112,color:'#6A5A9C',top:18,left:22,photoCount:5,lat:6.3100,lng:-10.8050,verified:true,premium:true,mainPhoto:null},
+  {id:6,rentalType:'Store/Shop',county:'Montserrado',district:'District #7',community:'Old Road',ownerContact:'231886777006',rooms:1,restrooms:1,price:120,freq:'6 months',amenities:['lwsc','fence'],available:true,mine:false,views:4,color:'#5A7A4A',top:62,left:28,photoCount:2,lat:6.3200,lng:-10.7900,verified:false,premium:false,mainPhoto:null},
+  {id:7,rentalType:'Residential',county:'Montserrado',district:'District #11',community:'Gardnersville',ownerContact:'231556123007',rooms:2,restrooms:1,price:280,freq:'6 months',amenities:['well','kitchen'],available:true,mine:false,views:11,color:'#C2664A',top:38,left:78,photoCount:3,lat:6.3300,lng:-10.6700,verified:false,premium:false,mainPhoto:null},
+  {id:8,rentalType:'Residential',county:'Montserrado',district:'District #16',community:'New Kru Town',ownerContact:'231860456008',rooms:2,restrooms:1,price:220,freq:'Negotiable',amenities:['lec','well'],available:true,mine:false,views:18,color:'#4A7A8C',top:80,left:50,photoCount:3,lat:6.3400,lng:-10.8200,verified:true,premium:false,mainPhoto:null},
+  {id:9,rentalType:'Residential',county:'Margibi',district:'District #2',community:'Kakata',ownerContact:'231779888009',rooms:3,restrooms:1,price:300,freq:'1 year',amenities:['generator','reservoir','parking'],available:true,mine:false,views:7,color:'#1C6B5A',top:25,left:60,photoCount:4,lat:6.5300,lng:-10.3600,verified:false,premium:false,mainPhoto:null},
+  {id:10,rentalType:'Residential',county:'Bong',district:'District #3',community:'Gbarnga',ownerContact:'231884321010',rooms:4,restrooms:2,price:350,freq:'1 year',amenities:['lec','well','fence'],available:true,mine:false,views:7,color:'#B8862E',top:50,left:15,photoCount:4,lat:6.9900,lng:-9.4700,verified:true,premium:true,mainPhoto:null},
+  {id:11,rentalType:'Store/Shop',county:'Nimba',district:'District #5',community:'Ganta',ownerContact:'231551122011',rooms:2,restrooms:1,price:260,freq:'Negotiable',amenities:['lec','security'],available:true,mine:false,views:3,color:'#3E7CB1',top:65,left:82,photoCount:2,lat:7.3800,lng:-8.9900,verified:false,premium:false,mainPhoto:null},
+  {id:12,rentalType:'Residential',county:'Grand Bassa',district:'District #1',community:'Buchanan',ownerContact:'231778899012',rooms:3,restrooms:1,price:310,freq:'6 months',amenities:['lwsc','kitchen','fence'],available:true,mine:false,views:5,color:'#A8553E',top:35,left:20,photoCount:3,lat:5.8800,lng:-10.0500,verified:false,premium:false,mainPhoto:null},
+  {id:13,rentalType:'Residential',county:'Grand Cape Mount',district:'District #1',community:'Robertsport',ownerContact:'231867744013',rooms:2,restrooms:1,price:190,freq:'Negotiable',amenities:['well','singleHouse'],available:true,mine:false,views:3,color:'#6A5A9C',top:78,left:30,photoCount:2,lat:6.7500,lng:-11.3700,verified:true,premium:false,mainPhoto:null},
+  {id:14,rentalType:'Office',county:'Lofa',district:'District #2',community:'Voinjama',ownerContact:'231552233014',rooms:4,restrooms:2,price:400,freq:'1 year',amenities:['lec','generator','parking','security'],available:true,mine:false,views:2,color:'#5A7A4A',top:15,left:55,photoCount:3,lat:8.4200,lng:-9.7500,verified:false,premium:false,mainPhoto:null},
+  {id:15,rentalType:'Residential',county:'Maryland',district:'District #1',community:'Harper',ownerContact:'231779911015',rooms:3,restrooms:2,price:330,freq:'6 months',amenities:['lwsc','kitchen','singleHouse'],available:true,mine:false,views:9,color:'#C2664A',top:60,left:45,photoCount:4,lat:4.3800,lng:-7.7200,verified:false,premium:false,mainPhoto:null}
+];
+let nextId = 16;
+let saved = new Set();
+let activeType = 'All';
+let searchTerm = '';
+let minPrice = null;
+let maxPrice = null;
+let sortMode = 'newest';
+let mode = 'list';
+let offlineMode = false;
+
+let landlordAccount = null;
+let seekerAccount = null;
+let seekerSex = '';
+let regStep = 1;
+let regData = {};
+let listingStep = 1;
+let listingData = {};
+
+/* ---------------- storage helpers ----------------
+   Uses the artifact storage API so accounts and listings survive a reload
+   inside this Claude.ai preview. This is a preview-only convenience —
+   once hosted for real, Supabase replaces it entirely. */
+async function loadJSON(key, shared){
+  try{
+    const res = await window.storage.get(key, shared);
+    return res ? JSON.parse(res.value) : null;
+  }catch(e){ return null; }
+}
+async function saveJSON(key, obj, shared){
+  try{ await window.storage.set(key, JSON.stringify(obj), shared); }catch(e){}
+}
+async function deleteKey(key, shared){
+  try{ await window.storage.delete(key, shared); }catch(e){}
+}
+function stripBlob(url){ return (url && url.startsWith('blob:')) ? null : url; }
+function saveListings(){
+  const safe = DATA.map(d=>({...d, mainPhoto: stripBlob(d.mainPhoto)}));
+  saveJSON('listings', safe, true);
+}
+function saveLandlord(){ saveJSON('landlord-account', {...landlordAccount, photo: stripBlob(landlordAccount.photo)}, false); }
+function saveSeeker(){ saveJSON('seeker-account', seekerAccount, false); }
+
+function el(id){return document.getElementById(id);}
+function listingTitle(item){ return `${item.rentalType} — ${item.community}`; }
+function iconFor(item){
+  if(item.rentalType==='Office') return 'ic-office';
+  if(item.rentalType==='Store/Shop') return 'ic-shop';
+  if(item.amenities.includes('duplex')||item.amenities.includes('singleApt')) return 'ic-apt';
+  return 'ic-house';
+}
+function photoOrIcon(item, sizeClass){
+  if(item.mainPhoto) return `<img src="${item.mainPhoto}">`;
+  return `<svg class="${sizeClass}"><use href="#${iconFor(item)}"/></svg>`;
+}
+function dotsHTML(n){
+  let out='';
+  for(let i=0;i<n;i++) out += `<span class="dot ${i===0?'on':''}"></span>`;
+  return out;
+}
+function badgesHTML(item){
+  return (item.verified?'<span class="verified-badge">✅ Verified</span>':'') + (item.premium?'<span class="featured-badge">⭐ Featured</span>':'');
+}
+
+/* ---------------- header / filters ---------------- */
+function renderChips(){
+  const opts = ['All', ...RENTAL_TYPES];
+  el('typeChips').innerHTML = opts.map(t=>
+    `<button class="chip ${t===activeType?'active':''}" onclick="setType('${t}')">${t}</button>`
+  ).join('');
+}
+function setType(t){activeType=t;renderChips();renderHome();}
+function onSearch(v){searchTerm=v.toLowerCase();renderHome();}
+function onPriceFilter(){
+  const minV = el('minPriceInput').value, maxV = el('maxPriceInput').value;
+  minPrice = minV ? Number(minV) : null;
+  maxPrice = maxV ? Number(maxV) : null;
+  renderHome();
+}
+function onSort(v){sortMode=v;renderHome();}
+function resetFilters(){
+  searchTerm=''; minPrice=null; maxPrice=null; activeType='All'; sortMode='newest';
+  el('searchInput').value=''; el('minPriceInput').value=''; el('maxPriceInput').value=''; el('sortSelect').value='newest';
+  renderChips(); renderHome();
+  showToast('Search criteria reset');
+}
+function toggleSearch(){el('searchRow').classList.toggle('hidden');}
+function setMode(m){
+  mode=m;
+  document.querySelectorAll('#viewToggle .seg').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  el('listGrid').classList.toggle('hidden', m!=='list');
+  el('mapSection').classList.toggle('hidden', m!=='map');
+  if(m==='map') renderMap();
+}
+
+function filtered(){
+  let arr = DATA.filter(d=> d.available!==false &&
+    (activeType==='All'||d.rentalType===activeType) &&
+    (minPrice===null||d.price>=minPrice) &&
+    (maxPrice===null||d.price<=maxPrice) &&
+    (d.community.toLowerCase().includes(searchTerm)||d.district.toLowerCase().includes(searchTerm)||d.county.toLowerCase().includes(searchTerm))
+  );
+  if(sortMode==='price-asc') arr.sort((a,b)=> (b.premium-a.premium) || (a.price-b.price));
+  else if(sortMode==='price-desc') arr.sort((a,b)=> (b.premium-a.premium) || (b.price-a.price));
+  else arr.sort((a,b)=> (b.premium-a.premium) || (b.id-a.id));
+  return arr;
+}
+
+function cardHTML(item){
+  const isSaved = saved.has(item.id);
+  return `
+  <div class="card">
+    <div class="card-photo" style="background:linear-gradient(135deg,${item.color},${item.color}cc);" onclick="openDetail(${item.id})">
+      ${photoOrIcon(item,'card-icon')}
+      <span class="photo-badge">${item.photoCount} 📷</span>
+      <span class="plate-tag">${item.rooms} Rm</span>
+      <button class="key-save ${isSaved?'saved':''}" onclick="event.stopPropagation();toggleSave(${item.id})">🔑</button>
+    </div>
+    <div class="card-body" onclick="openDetail(${item.id})">
+      <div class="card-title">${listingTitle(item)}${badgesHTML(item)}</div>
+      <div class="card-loc">📍 ${item.community}, ${item.county} County</div>
+      <div class="card-price">$${item.price} <span>/ ${item.freq}</span></div>
+    </div>
+  </div>`;
+}
+
+function renderHome(){
+  const list = filtered();
+  el('listGrid').innerHTML = list.length ? list.map(cardHTML).join('') :
+    `<div class="empty-state"><div class="big">🏚️</div>No listings match yet.<br>Try a different filter.</div>`;
+  if(mode==='map') renderMap();
+}
+function renderMap(){
+  const list = filtered();
+  el('mapPins').innerHTML = list.map(item=>
+    `<button class="map-pin" style="top:${item.top}%;left:${item.left}%;" onclick="openDetail(${item.id})">$${item.price}</button>`
+  ).join('');
+}
+function toggleSave(id){
+  if(saved.has(id)) saved.delete(id); else saved.add(id);
+  if(seekerAccount){ seekerAccount.saved = Array.from(saved); saveSeeker(); }
+  renderHome(); renderSaved();
+  showToast(saved.has(id) ? '🔑 Saved' : 'Removed from saved');
+  const icon = document.getElementById('detailSaveIcon');
+  if(icon && Number(icon.dataset.id)===id) icon.classList.toggle('saved', saved.has(id));
+}
+function renderSaved(){
+  const list = DATA.filter(d=>saved.has(d.id));
+  const hint = !seekerAccount ? `<div class="field-hint" style="text-align:center;margin-bottom:12px;">Create a free seeker account in Profile to keep this list across visits.</div>` : '';
+  el('savedGrid').innerHTML = hint + (list.length ? list.map(cardHTML).join('') :
+    `<div class="empty-state"><div class="big">🔑</div>Nothing saved yet.<br>Tap the key icon on any listing.</div>`);
+}
+
+function showView(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  el('view-'+v).classList.add('active');
+  document.querySelectorAll('.nav-item[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  if(v==='saved') renderSaved();
+  if(v==='dashboard') renderDashboard();
+  if(v==='profile') renderProfile();
+}
+function showToast(msg){
+  const t = el('toast'); t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(t._timer); t._timer = setTimeout(()=>t.classList.add('hidden'), 2600);
+}
+function closeModal(id){ el(id).classList.add('hidden'); }
+function openSafety(){ el('disclaimerText').innerHTML = DISCLAIMER_HTML; el('safetyModal').classList.remove('hidden'); }
+function reportListing(id){ showToast("Thank you — our team will review this listing."); }
+
+/* ---------------- site-wide report ---------------- */
+let reportCat = '';
+function setReportCat(c){
+  reportCat = c;
+  const map = {Scam:'catScam',Complaint:'catComplaint',Recommendation:'catRec',Other:'catOther'};
+  Object.values(map).forEach(id=>el(id).classList.remove('active'));
+  el(map[c]).classList.add('active');
+}
+function openReportModal(){
+  reportCat = '';
+  el('reportMsg').value=''; el('reportContact').value='';
+  ['catScam','catComplaint','catRec','catOther'].forEach(id=>el(id).classList.remove('active'));
+  el('reportModal').classList.remove('hidden');
+}
+function submitReport(){
+  const msg = el('reportMsg').value.trim();
+  if(!reportCat || !msg){ showToast('Please choose a category and describe the issue'); return; }
+  const contact = el('reportContact').value.trim();
+  saveJSON('report-'+Date.now(), {category:reportCat, message:msg, contact, time:new Date().toISOString()}, true);
+  closeModal('reportModal');
+  showToast('Thank you — our team will review this within 24 hours.');
+}
+
+/* ---------------- detail ---------------- */
+function openDetail(id){
+  const item = DATA.find(d=>d.id===id);
+  if(!item) return;
+  item.views++;
+  const isSaved = saved.has(id);
+  const amenityHTML = item.amenities.map(a=>`<span class="amenity-pill">${AMENITIES[a]}</span>`).join('') || '<span class="amenity-pill">None listed</span>';
+  const waText = "Hi, I saw your "+item.rentalType+" listing in "+item.community+" on Places4Lease and I am interested.";
+  const gps = item.lat ? ` · GPS ${item.lat.toFixed(3)}, ${item.lng.toFixed(3)}` : '';
+  el('detailSheet').innerHTML = `
+    <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
+    <div class="detail-photo" style="background:linear-gradient(135deg,${item.color},${item.color}cc);">
+      ${photoOrIcon(item,'detail-icon')}
+      <button id="detailSaveIcon" data-id="${item.id}" class="key-save ${isSaved?'saved':''}" style="position:absolute;top:10px;right:10px;" onclick="toggleSave(${item.id})">🔑</button>
+    </div>
+    <div class="dots">${dotsHTML(item.photoCount)}</div>
+    <div>
+      <span class="detail-plate">${item.rooms} Room${item.rooms>1?'s':''} · ${item.restrooms} Restroom${item.restrooms>1?'s':''}</span>
+      <span class="detail-type">${item.rentalType}</span>${badgesHTML(item)}
+    </div>
+    <div class="detail-title">${listingTitle(item)}</div>
+    <div class="detail-loc">📍 ${item.community}, ${item.district}, ${item.county} County${gps}</div>
+    <div class="detail-price">$${item.price} <span style="font-size:13px;font-weight:600;color:var(--muted);">/ ${item.freq}</span></div>
+    <div class="amenity-row">${amenityHTML}</div>
+    <div class="cta-row">
+      <a class="btn btn-whatsapp" target="_blank" href="https://wa.me/${item.ownerContact}?text=${encodeURIComponent(waText)}">💬 Chat on WhatsApp</a>
+      <a class="btn btn-outline" href="tel:+${item.ownerContact}">📞 Call</a>
+    </div>
+    <div class="field-hint" style="text-align:center;margin-top:10px;">⚠️ Always verify a property in person before paying anyone. <a class="safety-link" href="#" onclick="openSafety();return false;">Read our safety notice</a></div>
+    <div style="text-align:center;margin-top:6px;"><a class="safety-link" href="#" style="color:#A33;" onclick="reportListing(${item.id});return false;">🚩 Report this listing</a></div>`;
+  el('detailModal').classList.remove('hidden');
+}
+
+/* ---------------- dashboard ---------------- */
+function renderDashboard(){
+  const mine = DATA.filter(d=>d.mine);
+  const list = mine.length ? mine.map(item=>`
+    <div class="dash-card">
+      <div class="dash-top">
+        <div class="dash-thumb" style="background:${item.color};">${photoOrIcon(item,'')}</div>
+        <div class="dash-info">
+          <div class="dash-title">${listingTitle(item)}${badgesHTML(item)}</div>
+          <span class="status-badge ${item.available?'on':'off'}">${item.available?'Active':'Not available'}</span>
+          <div class="dash-stats">${item.views} views · $${item.price} / ${item.freq}</div>
+        </div>
+        <div class="dash-actions">
+          <button onclick="showToast('Edit screen coming soon')">✏️</button>
+          <button onclick="deleteListing(${item.id})">🗑️</button>
+        </div>
+      </div>
+      <div class="dash-toggle-row">
+        <span>Property still available?</span>
+        <button class="switch ${item.available?'on':''}" onclick="toggleAvailable(${item.id})"></button>
+      </div>
+    </div>`).join('') : `<div class="empty-state"><div class="big">📋</div>You have not posted a listing yet.</div>`;
+  const growCard = landlordAccount ? `
+    <div class="profile-card">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:4px;">🚀 Grow your reach</h3>
+      <p class="field-hint" style="margin-top:0;">These are admin-activated — we turn them on after payment or an in-person visit, never automatically.</p>
+      <button class="btn btn-brass" style="display:block;width:100%;" onclick="requestPremium()">⭐ Request Premium placement</button>
+      <div class="field-hint">We activate this on your account once payment is confirmed.</div>
+      <button class="btn btn-brass" style="display:block;width:100%;margin-top:14px;" onclick="requestVerification()">✅ Request an in-person verification visit</button>
+      <div class="field-hint">Our team visits you, checks documentation, and applies the green Verified badge.</div>
+    </div>` : '';
+  el('dashGrid').innerHTML = `
+    <button class="btn btn-brass" style="display:block;width:100%;margin-bottom:16px;" onclick="handlePostTap()">➕ Add another property</button>
+    ${growCard}
+    ${list}`;
+}
+function deleteListing(id){ DATA = DATA.filter(d=>d.id!==id); saveListings(); renderDashboard(); renderHome(); showToast('Listing deleted'); }
+function toggleAvailable(id){
+  const item = DATA.find(d=>d.id===id);
+  item.available = !item.available;
+  saveListings();
+  renderDashboard(); renderHome();
+  showToast(item.available ? 'Listing is active and visible again' : 'Listing hidden from public view');
+}
+function requestPremium(){
+  showToast("Request sent — our team will contact you on WhatsApp once payment is confirmed.");
+}
+function requestVerification(){
+  showToast("Request sent — our team will reach out on WhatsApp to schedule your visit.");
+}
+
+/* ---------------- profile ---------------- */
+function waBadge(state){
+  if(state==='confirmed') return '<span class="verified-chip">✅ Confirmed</span>';
+  if(state==='pending') return '<span class="status-pill pill-pending" style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:#FBF3E4;color:var(--brass-dark);">📨 Pending review</span>';
+  return '';
+}
+function renderProfile(){
+  const acctHTML = landlordAccount ? `
+    <div class="profile-card">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">🏠 Landlord account</h3>
+      <div class="profile-avatar">${landlordAccount.photo ? `<img src="${landlordAccount.photo}">` : (landlordAccount.name ? landlordAccount.name.split(' ').map(w=>w[0]).slice(0,2).join('') : '?')}</div>
+      <div class="profile-row"><span>Name</span><span>${landlordAccount.name}</span></div>
+      <div class="profile-row"><span>Sex</span><span>${landlordAccount.sex}</span></div>
+      <div class="profile-row"><span>Country</span><span>${landlordAccount.country}</span></div>
+      <div class="profile-row"><span>County of residence</span><span>${landlordAccount.county}</span></div>
+      <div class="profile-row"><span>WhatsApp number</span><span>${landlordAccount.whatsapp} ${waBadge(landlordAccount.waConfirmed)}</span></div>
+      <div class="profile-row"><span>Mobile money number</span><span>${landlordAccount.momo}</span></div>
+      <div class="profile-row" style="border-bottom:none;"><span>Email</span><span>${landlordAccount.email||'—'}</span></div>
+      <a class="safety-link" href="#" onclick="openRegistration();return false;">↻ Preview the registration form again</a><br>
+      <a class="safety-link" href="#" style="color:#A33;" onclick="logoutLandlord();return false;">🚪 Log out of landlord account</a>
+    </div>` : `
+    <div class="profile-card">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">🏠 Landlord account</h3>
+      <p class="field-hint" style="margin-top:0;">You do not have a landlord account yet. You only need this if you want to post a property — once created, it stays signed in on this device so you never have to register again.</p>
+      <button class="btn btn-brass" style="display:inline-block;padding:11px 20px;" onclick="openRegistration()">➕ Create landlord account</button>
+    </div>`;
+  const seekerHTML = seekerAccount ? `
+    <div class="profile-card">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">🔎 Seeker account</h3>
+      <div class="profile-row"><span>Name</span><span>${seekerAccount.name}</span></div>
+      <div class="profile-row"><span>Sex</span><span>${seekerAccount.sex}</span></div>
+      <div class="profile-row"><span>WhatsApp number</span><span>${seekerAccount.whatsapp}</span></div>
+      <div class="profile-row"><span>Email</span><span>${seekerAccount.email||'—'}</span></div>
+      <div class="profile-row" style="border-bottom:none;"><span>Saved listings</span><span>${saved.size} saved</span></div>
+      <div class="toggle-row" style="padding:10px 0;">
+        <span style="font-size:13px;font-weight:600;">🔔 Notify me about new listings</span>
+        <button class="switch ${seekerAccount.alerts?'on':''}" onclick="toggleSeekerAlerts()"></button>
+      </div>
+      <a class="safety-link" href="#" style="color:#A33;" onclick="logoutSeeker();return false;">🚪 Log out of seeker account</a>
+    </div>` : `
+    <div class="profile-card">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">🔎 Seeker account</h3>
+      <p class="field-hint" style="margin-top:0;">Optional — you can browse and save listings without an account. Creating one keeps your saved listings and alerts on this device across visits, and signs you in automatically next time.</p>
+      <div class="field-label">Name</div>
+      <input class="field-input" id="skName" placeholder="Your name">
+      <div class="field-label">Sex</div>
+      <div class="opt-row">
+        <button class="opt-btn" id="skSexM" onclick="setSeekerSex('Male')">Male</button>
+        <button class="opt-btn" id="skSexF" onclick="setSeekerSex('Female')">Female</button>
+      </div>
+      <div class="field-label">WhatsApp number</div>
+      <input class="field-input" id="skWa" placeholder="+231 ...">
+      <div class="field-label">Email address</div>
+      <input class="field-input" id="skEmail" type="email" placeholder="you@example.com">
+      <div class="agree-row">
+        <input type="checkbox" id="skMarketing">
+        <label for="skMarketing">📧 I would like to receive updates and marketing communication from Places4Lease.</label>
+      </div>
+      <button class="btn btn-brass" style="display:block;margin-top:14px;width:100%;" onclick="createSeekerAccount()">Create free seeker account</button>
+    </div>`;
+  el('view-profile').innerHTML = `
+    <h2 class="section-title">Profile</h2>
+    <div class="profile-card">
+      <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">📍 Contact Places4Lease</h3>
+      <div class="profile-row"><span>Phone</span><span><a href="tel:${SITE_CONTACT.phoneRaw}">${SITE_CONTACT.phone}</a></span></div>
+      <div class="profile-row"><span>Email</span><span><a href="mailto:${SITE_CONTACT.email}">${SITE_CONTACT.email}</a></span></div>
+      <div class="profile-row" style="border-bottom:none;"><span>Address</span><span>${SITE_CONTACT.address}</span></div>
+      <div class="field-hint" style="margin-top:8px;">Placeholder details — swap in your real phone, email and office address.</div>
+    </div>
+    ${acctHTML}
+    ${seekerHTML}
+    <div class="profile-card">
+      <div class="toggle-row" style="padding:0;">
+        <div><strong style="font-size:14px;">Simulate offline mode</strong><div class="field-hint">Preview how Places4Lease behaves with no connection</div></div>
+        <button class="switch ${offlineMode?'on':''}" id="offlineSwitch" onclick="toggleOffline()"></button>
+      </div>
+    </div>`;
+}
+function setSeekerSex(s){ seekerSex=s; el('skSexM').classList.toggle('active', s==='Male'); el('skSexF').classList.toggle('active', s==='Female'); }
+function createSeekerAccount(){
+  const name = el('skName').value.trim();
+  const wa = el('skWa').value.trim();
+  const email = el('skEmail').value.trim();
+  if(!name || !seekerSex || !wa || !email){ showToast('Please complete name, sex, WhatsApp number and email'); return; }
+  seekerAccount = {name, sex:seekerSex, whatsapp:wa, email, marketingOptIn:el('skMarketing').checked, saved:Array.from(saved), alerts:true};
+  saveSeeker();
+  renderProfile();
+  showToast('🎉 Seeker account created — your saved listings will now be remembered');
+}
+function toggleSeekerAlerts(){
+  if(!seekerAccount) return;
+  seekerAccount.alerts = !seekerAccount.alerts;
+  saveSeeker();
+  renderProfile();
+}
+function logoutSeeker(){
+  seekerAccount = null;
+  deleteKey('seeker-account', false);
+  renderProfile();
+  showToast('Logged out of seeker account');
+}
+function logoutLandlord(){
+  landlordAccount = null;
+  deleteKey('landlord-account', false);
+  renderProfile();
+  showToast('Logged out of landlord account');
+}
+function toggleOffline(){
+  offlineMode = !offlineMode;
+  el('offlineBanner').classList.toggle('hidden', !offlineMode);
+  renderProfile();
+}
+
+/* ---------------- registration ---------------- */
+function handlePostTap(){
+  if(!landlordAccount) openRegistration(); else openListingFlow();
+}
+function openRegistration(){
+  regStep = 1;
+  regData = {name:'',sex:'',country:'Liberia',county:'',whatsapp:'',momo:'',email:'',marketingOptIn:false,photo:null,waConfirmed:false};
+  renderRegStep();
+  el('regModal').classList.remove('hidden');
+}
+function contactFooter(){
+  return `<div class="field-hint" style="text-align:center;margin-top:14px;">Need help? 📞 ${SITE_CONTACT.phone} · 📧 ${SITE_CONTACT.email}</div>`;
+}
+function verifyBoxHTML(){
+  const has = regData.whatsapp && regData.whatsapp.trim().length>0;
+  if(regData.waConfirmed==='confirmed'){
+    return `<div class="verify-ok">✅ WhatsApp number confirmed</div>`;
+  }
+  if(regData.waConfirmed==='pending'){
+    return `<div class="verify-ok" style="color:var(--brass-dark);">📨 Message sent — pending review. We typically confirm within a few hours.</div>`;
+  }
+  if(!has){
+    return `<button class="btn btn-ghost" style="border:1.5px solid var(--border);width:100%;" onclick="showToast('Please enter your WhatsApp number above first')">💬 Send WhatsApp message to confirm</button>
+            <div class="field-hint">Enter your WhatsApp number above to enable this.</div>`;
+  }
+  return `<p style="font-size:13px;color:var(--muted);margin:0 0 10px;">Tap below to open WhatsApp and send a one-tap message to our verification number <strong style="color:var(--ink);">${PLATFORM_WHATSAPP_DISPLAY}</strong>. Sending it proves the number is yours — free, takes a few seconds.</p>
+          <a class="btn btn-whatsapp" href="https://wa.me/${PLATFORM_WHATSAPP_RAW}?text=${encodeURIComponent('Hi Places4Lease, my name is '+(regData.name||'')+' and I am confirming my number to register as a landlord.')}" target="_blank" onclick="markWaPending()">💬 Send WhatsApp message to confirm</a>`;
+}
+function updateVerifyBox(){
+  const box = el('verifyBoxContainer');
+  if(box) box.innerHTML = verifyBoxHTML();
+}
+function markWaPending(){
+  regData.waConfirmed = 'pending';
+  updateVerifyBox();
+}
+function onWaInput(v){
+  regData.whatsapp = v;
+  updateVerifyBox();
+}
+function renderRegStep(){
+  const total = 4;
+  let body = '';
+  if(regStep===1){
+    body = `
+      <div class="field-label">Name</div>
+      <input class="field-input" id="rName" value="${regData.name}" placeholder="e.g. Esther Johnson">
+      <div class="field-label">Sex</div>
+      <div class="opt-row">
+        <button class="opt-btn ${regData.sex==='Male'?'active':''}" onclick="regData.sex='Male';renderRegStep();">Male</button>
+        <button class="opt-btn ${regData.sex==='Female'?'active':''}" onclick="regData.sex='Female';renderRegStep();">Female</button>
+      </div>
+      <div class="field-label">Country</div>
+      <input class="field-input" id="rCountry" value="${regData.country}">
+      <div class="field-label">County of residence</div>
+      <select class="field-input" id="rCounty">
+        <option value="">Select a county</option>
+        ${COUNTIES.map(c=>`<option value="${c}" ${regData.county===c?'selected':''}>${c}</option>`).join('')}
+      </select>`;
+  } else if(regStep===2){
+    body = `
+      <div class="field-label">WhatsApp number</div>
+      <input class="field-input" id="rWa" value="${regData.whatsapp}" placeholder="+231 77 000 0000" oninput="onWaInput(this.value)">
+      <div class="field-label">Mobile money number</div>
+      <input class="field-input" id="rMomo" value="${regData.momo}" placeholder="+231 77 000 0000">
+      <div class="field-hint">Saved for future payment features. Not used to verify you today.</div>
+      <div class="field-label">Email address</div>
+      <input class="field-input" id="rEmail" type="email" value="${regData.email}" placeholder="you@example.com">
+      <div class="verify-box" id="verifyBoxContainer">${verifyBoxHTML()}</div>
+      <div class="agree-row">
+        <input type="checkbox" id="rMarketing" ${regData.marketingOptIn?'checked':''}>
+        <label for="rMarketing">📧 I would like to receive updates and marketing communication from Places4Lease.</label>
+      </div>`;
+  } else if(regStep===3){
+    body = `
+      <p style="font-size:13.5px;color:var(--muted);margin:0 0 4px;">Add a clear photo of yourself. We use this only to confirm you are a real property owner and to help catch scammers — it is never published or shown publicly on the site.</p>
+      <div class="avatar-upload">
+        <div class="avatar-preview" id="avatarPreview">${regData.photo ? `<img src="${regData.photo}">` : '📷'}</div>
+        <input type="file" id="rPhoto" accept="image/*" capture="user" style="display:none" onchange="onAvatarChosen(event)">
+        <button class="btn btn-brass" style="display:inline-block;padding:10px 22px;" onclick="document.getElementById('rPhoto').click()">${regData.photo?'Change photo':'Take or choose a photo'}</button>
+      </div>`;
+  } else if(regStep===4){
+    body = `
+      <div class="disclaimer-box">${DISCLAIMER_HTML}</div>
+      <div class="agree-row">
+        <input type="checkbox" id="rAgree">
+        <label for="rAgree">${AGREE_TEXT}</label>
+      </div>`;
+  }
+  el('regSheet').innerHTML = `
+    <button class="modal-close" onclick="closeModal('regModal')">✕</button>
+    <div class="step-indicator">Landlord account · Step ${regStep} of ${total}</div>
+    <div class="step-title">${['Tell us about you','Your contact numbers','Your photo','Review &amp; agree'][regStep-1]}</div>
+    ${body}
+    <div class="step-nav">
+      ${regStep>1?`<button class="btn btn-ghost" style="flex:0 0 auto;" onclick="changeRegStep(-1)">← Back</button>`:''}
+      ${regStep<total?`<button class="btn btn-brass" onclick="changeRegStep(1)">Continue →</button>`:`<button class="btn btn-whatsapp" onclick="createAccount()">Create account</button>`}
+    </div>
+    ${contactFooter()}`;
+}
+function changeRegStep(dir){
+  if(dir>0){
+    if(regStep===1){
+      regData.name = el('rName').value.trim();
+      regData.country = el('rCountry').value.trim();
+      regData.county = el('rCounty').value;
+      if(!regData.name || !regData.sex || !regData.county){ showToast('Please complete name, sex and county'); return; }
+    }
+    if(regStep===2){
+      regData.whatsapp = el('rWa').value.trim();
+      regData.momo = el('rMomo').value.trim();
+      regData.email = el('rEmail').value.trim();
+      regData.marketingOptIn = el('rMarketing').checked;
+      if(!regData.whatsapp || !regData.momo || !regData.email){ showToast('Please fill in your WhatsApp number, mobile money number and email'); return; }
+    }
+    if(regStep===3){
+      if(!regData.photo){ showToast('Please add a photo to continue'); return; }
+    }
+  }
+  regStep += dir;
+  renderRegStep();
+}
+function onAvatarChosen(e){
+  if(e.target.files[0]){ regData.photo = URL.createObjectURL(e.target.files[0]); renderRegStep(); }
+}
+function createAccount(){
+  if(!el('rAgree').checked){ showToast('Please check the box to agree before continuing'); return; }
+  landlordAccount = {...regData};
+  saveLandlord();
+  closeModal('regModal');
+  showToast('🎉 Account created! Now add your first listing.');
+  openListingFlow();
+}
+
+/* ---------------- listing flow ---------------- */
+function openListingFlow(){
+  listingStep = 1;
+  listingData = {county:'',district:'',community:'',ownerContact:(landlordAccount.whatsapp||'').replace(/\D/g,''),lat:null,lng:null,rentalType:'Residential',rooms:1,restrooms:1,price:'',freq:'6 months',amenities:[],photoSlots:{},available:true};
+  renderListingStep();
+  el('listingModal').classList.remove('hidden');
+}
+function useMyLocation(){
+  showToast('Getting your location…');
+  const fallback = ()=>{
+    listingData.lat = 6.3156 + (Math.random()-0.5)*0.4;
+    listingData.lng = -10.8074 + (Math.random()-0.5)*0.4;
+    renderListingStep();
+  };
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{ listingData.lat=pos.coords.latitude; listingData.lng=pos.coords.longitude; renderListingStep(); },
+      ()=>fallback(),
+      {timeout:4000}
+    );
+  } else fallback();
+}
+function renderListingStep(){
+  const total = 6;
+  let body = '';
+  if(listingStep===1){
+    body = `
+      <div class="field-label">County</div>
+      <select class="field-input" id="lCounty">
+        <option value="">Select a county</option>
+        ${COUNTIES.map(c=>`<option value="${c}" ${listingData.county===c?'selected':''}>${c}</option>`).join('')}
+      </select>
+      <div class="field-label">Political district</div>
+      <input class="field-input" id="lDistrict" value="${listingData.district}" placeholder="e.g. District #4">
+      <div class="field-label">Community name</div>
+      <input class="field-input" id="lCommunity" value="${listingData.community}" placeholder="e.g. Sinkor">
+      <div class="field-label">Owner's contact number</div>
+      <input class="field-input" id="lOwnerContact" value="${listingData.ownerContact}" placeholder="+231 ...">
+      <div class="field-hint">Defaults to your number — change it if you are listing on behalf of someone else.</div>
+      <div class="field-label">Property location (GPS)</div>
+      <div class="loc-box">
+        ${listingData.lat ? `<div class="verify-ok">📍 Location captured (${listingData.lat.toFixed(4)}, ${listingData.lng.toFixed(4)})</div>` :
+          `<button class="btn btn-brass" style="display:inline-block;padding:10px 20px;" onclick="useMyLocation()">📍 Use my current location</button>
+           <div class="field-hint">Optional, but it helps renters find the exact property on the map.</div>`}
+      </div>`;
+  } else if(listingStep===2){
+    body = `
+      <div class="field-label">Rental type</div>
+      <div class="opt-row three">
+        ${RENTAL_TYPES.map(t=>`<button class="opt-btn ${listingData.rentalType===t?'active':''}" onclick="listingData.rentalType='${t}';renderListingStep();">${t}</button>`).join('')}
+      </div>`;
+  } else if(listingStep===3){
+    body = `
+      <div class="field-label">Number of rooms</div>
+      <div class="stepper">
+        <button onclick="listingData.rooms=Math.max(1,listingData.rooms-1);renderListingStep();">−</button>
+        <span class="val">${listingData.rooms}</span>
+        <button onclick="listingData.rooms++;renderListingStep();">+</button>
+      </div>
+      <div class="field-label">Number of restrooms</div>
+      <div class="stepper">
+        <button onclick="listingData.restrooms=Math.max(1,listingData.restrooms-1);renderListingStep();">−</button>
+        <span class="val">${listingData.restrooms}</span>
+        <button onclick="listingData.restrooms++;renderListingStep();">+</button>
+      </div>
+      <div class="field-label">Rental price (USD)</div>
+      <input class="field-input" id="lPrice" type="number" value="${listingData.price}" placeholder="e.g. 350">
+      <div class="field-label">Rental payment frequency</div>
+      <div class="opt-row three">
+        ${PAY_FREQ.map(f=>`<button class="opt-btn ${listingData.freq===f?'active':''}" onclick="listingData.freq='${f}';renderListingStep();">${f}</button>`).join('')}
+      </div>`;
+  } else if(listingStep===4){
+    body = `
+      ${AMENITY_GROUPS.map(g=>`
+        <div class="field-label" style="margin-top:16px;">${g.title}</div>
+        <div class="amenity-grid">
+          ${g.keys.map(k=>`<button class="opt-btn ${listingData.amenities.includes(k)?'active':''}" onclick="toggleAmenity('${k}')">${AMENITIES[k]}</button>`).join('')}
+        </div>`).join('')}`;
+  } else if(listingStep===5){
+    body = `
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Photos are automatically compressed so your listing loads fast, even on slow connections.</p>
+      <div class="photo-slot-grid">
+        ${PHOTO_SLOTS.map(s=>{
+          const f = listingData.photoSlots[s.key];
+          return `<div class="photo-slot" style="${s.main?'border-color:var(--brass);background:#FBF3E4;':''}">
+            ${f ? `<img src="${URL.createObjectURL(f)}">` : `<div class="ph-placeholder">📷</div>`}
+            <div class="ph-label">${s.label}${s.main?`<br><span style="color:var(--brass-dark);font-weight:700;font-size:11px;">⭐ This becomes your listing's main photo</span>`:''}</div>
+            <input type="file" accept="image/*" id="slot_${s.key}" style="display:none" onchange="onSlotChosen('${s.key}',this)">
+            <button class="slot-btn" onclick="document.getElementById('slot_${s.key}').click()">${f?'Change':'Add photo'}</button>
+          </div>`;
+        }).join('')}
+      </div>`;
+  } else if(listingStep===6){
+    const a = listingData.amenities.map(k=>AMENITIES[k]).join(', ') || '—';
+    const photoCount = Object.values(listingData.photoSlots).filter(Boolean).length;
+    body = `
+      <div class="summary-row"><span>Location</span><span>${listingData.community}, ${listingData.district}, ${listingData.county} County</span></div>
+      <div class="summary-row"><span>GPS</span><span>${listingData.lat?listingData.lat.toFixed(4)+', '+listingData.lng.toFixed(4):'Not captured'}</span></div>
+      <div class="summary-row"><span>Owner contact</span><span>${listingData.ownerContact}</span></div>
+      <div class="summary-row"><span>Rental type</span><span>${listingData.rentalType}</span></div>
+      <div class="summary-row"><span>Rooms / Restrooms</span><span>${listingData.rooms} / ${listingData.restrooms}</span></div>
+      <div class="summary-row"><span>Price</span><span>$${listingData.price||'0'} / ${listingData.freq}</span></div>
+      <div class="summary-row"><span>Amenities</span><span>${a}</span></div>
+      <div class="summary-row"><span>Photos added</span><span>${photoCount} of 5</span></div>
+      <div class="dash-toggle-row" style="margin-top:14px;">
+        <span>Is this property still available?</span>
+        <button class="switch ${listingData.available?'on':''}" onclick="listingData.available=!listingData.available;renderListingStep();"></button>
+      </div>
+      <div class="field-hint" style="margin-top:10px;">⚠️ By publishing you confirm this listing follows our <a class="safety-link" href="#" onclick="openSafety();return false;">Safety &amp; Terms</a>.</div>`;
+  }
+  el('listingSheet').innerHTML = `
+    <button class="modal-close" onclick="closeModal('listingModal')">✕</button>
+    <div class="step-indicator">New listing · Step ${listingStep} of ${total}</div>
+    <div class="step-title">${['Location, contact &amp; GPS','Rental type','Rooms, price &amp; terms','Amenities','Photos','Review &amp; publish'][listingStep-1]}</div>
+    ${body}
+    <div class="step-nav">
+      ${listingStep>1?`<button class="btn btn-ghost" style="flex:0 0 auto;" onclick="changeListingStep(-1)">← Back</button>`:''}
+      ${listingStep<total?`<button class="btn btn-brass" onclick="changeListingStep(1)">Continue →</button>`:`<button class="btn btn-whatsapp" onclick="publishListing()">🎉 Publish listing</button>`}
+    </div>`;
+}
+function toggleAmenity(k){
+  const i = listingData.amenities.indexOf(k);
+  if(i>-1) listingData.amenities.splice(i,1); else listingData.amenities.push(k);
+  renderListingStep();
+}
+function onSlotChosen(key, input){
+  if(input.files[0]){ listingData.photoSlots[key] = input.files[0]; renderListingStep(); }
+}
+function changeListingStep(dir){
+  if(dir>0){
+    if(listingStep===1){
+      listingData.county = el('lCounty').value;
+      listingData.district = el('lDistrict').value.trim();
+      listingData.community = el('lCommunity').value.trim();
+      listingData.ownerContact = el('lOwnerContact').value.trim().replace(/\D/g,'');
+      if(!listingData.county || !listingData.district || !listingData.community || !listingData.ownerContact){
+        showToast('Please complete county, district, community and owner contact'); return;
+      }
+    }
+    if(listingStep===3){
+      listingData.price = el('lPrice').value.trim();
+      if(!listingData.price){ showToast('Please enter a rental price'); return; }
+    }
+  }
+  listingStep += dir;
+  renderListingStep();
+}
+function publishListing(){
+  if(offlineMode){
+    closeModal('listingModal');
+    showToast('📴 Saved on your phone — will publish once you reconnect');
+    return;
+  }
+  const colors = ['#1C6B5A','#B8862E','#3E7CB1','#A8553E','#6A5A9C','#5A7A4A'];
+  const frontFile = listingData.photoSlots.front;
+  DATA.unshift({
+    id:nextId++, rentalType:listingData.rentalType, county:listingData.county, district:listingData.district,
+    community:listingData.community, ownerContact:listingData.ownerContact, rooms:listingData.rooms,
+    restrooms:listingData.restrooms, price:Number(listingData.price)||0, freq:listingData.freq,
+    amenities:listingData.amenities, available:listingData.available, mine:true, views:0,
+    color:colors[Math.floor(Math.random()*colors.length)], top:20+Math.random()*55, left:20+Math.random()*55,
+    photoCount: Math.max(1, Object.values(listingData.photoSlots).filter(Boolean).length),
+    lat:listingData.lat, lng:listingData.lng, verified:false, premium:false,
+    mainPhoto: frontFile ? URL.createObjectURL(frontFile) : null
+  });
+  saveListings();
+  closeModal('listingModal');
+  showView('home'); renderHome();
+  showToast('🎉 Listing published!');
+}
+
+/* ---------------- init ---------------- */
+async function init(){
+  const storedListings = await loadJSON('listings', true);
+  if(storedListings && storedListings.length){ DATA = storedListings; }
+  else { saveListings(); }
+  nextId = DATA.reduce((m,d)=>Math.max(m,d.id),0) + 1;
+
+  landlordAccount = await loadJSON('landlord-account', false);
+  seekerAccount = await loadJSON('seeker-account', false);
+  if(seekerAccount && seekerAccount.saved){ saved = new Set(seekerAccount.saved); }
+
+  el('loadingOverlay').classList.add('hidden');
+  renderChips();
+  renderHome();
+}
+init();
+</script>
+</body>
+</html>
