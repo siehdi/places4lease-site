@@ -329,7 +329,22 @@ a{text-decoration:none;color:inherit;}
   <div class="toast hidden" id="toast"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* =========================================================================
+   SUPABASE CONNECTION — paste your real values here, then save this file.
+   Where to find them: Supabase dashboard → Settings → API.
+   SUPABASE_URL is the "Project URL". SUPABASE_ANON_KEY is the
+   "Publishable key" (also called the "anon key" in older Supabase screens).
+   Both are safe to put directly in this public file — they are meant to be
+   public. Never put the "secret" key here.
+   ========================================================================= */
+const SUPABASE_URL = 'https://bdjfkwvvpdnuzczwogaw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJkamZrd3Z2cGRudXpjendvZ2F3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI4Mjg2NDksImV4cCI6MjA5ODQwNDY0OX0.EwnHwhsok4T8AFK-1HadHfYnIkyfwsie4crHPSqA_-A';
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 const COUNTIES = ['Bomi','Bong','Gbarpolu','Grand Bassa','Grand Cape Mount','Grand Gedeh','Grand Kru','Lofa','Margibi','Maryland','Montserrado','Nimba','River Cess','River Gee','Sinoe'];
 const RENTAL_TYPES = ['Residential','Office','Store/Shop'];
 const PAY_FREQ = ['6 months','1 year','Negotiable'];
@@ -371,25 +386,9 @@ const DISCLAIMER_HTML = `
   <p>If you encounter a scam, an inaccurate listing, or unethical behavior from anyone on this site, please use the 📢 report button to tell us so we can investigate and protect other users.</p>`;
 const AGREE_TEXT = "I confirm that the information I have provided is accurate, and I agree not to use Places4Lease.com for any illegal, fraudulent, or abusive activity. I understand Places4Lease.com is a free platform and is not responsible for transactions between users.";
 
-let DATA = [
-  {id:1,rentalType:'Residential',county:'Montserrado',district:'District #4',community:'Sinkor',ownerContact:'231771234001',rooms:3,restrooms:1,price:450,freq:'1 year',amenities:['lec','parking','security'],available:true,mine:false,views:14,color:'#1C6B5A',top:30,left:45,photoCount:4,lat:6.2907,lng:-10.7605,verified:true,premium:false,mainPhoto:null},
-  {id:2,rentalType:'Residential',county:'Montserrado',district:'District #9',community:'ELWA Junction',ownerContact:'231880222002',rooms:1,restrooms:1,price:180,freq:'6 months',amenities:['lec','singleApt'],available:true,mine:false,views:9,color:'#B8862E',top:55,left:68,photoCount:3,lat:6.2700,lng:-10.7000,verified:false,premium:false,mainPhoto:null},
-  {id:3,rentalType:'Residential',county:'Montserrado',district:'District #15',community:'Paynesville',ownerContact:'231776555003',rooms:4,restrooms:2,price:600,freq:'1 year',amenities:['generator','well','security','fence','singleHouse'],available:true,mine:false,views:34,color:'#3E7CB1',top:72,left:60,photoCount:5,lat:6.2833,lng:-10.6833,verified:true,premium:true,mainPhoto:null},
-  {id:4,rentalType:'Office',county:'Montserrado',district:'District #10',community:'Congo Town',ownerContact:'231775999004',rooms:3,restrooms:2,price:500,freq:'Negotiable',amenities:['lec','generator','parking'],available:true,mine:false,views:6,color:'#A8553E',top:45,left:35,photoCount:3,lat:6.2800,lng:-10.7400,verified:false,premium:false,mainPhoto:null},
-  {id:5,rentalType:'Residential',county:'Montserrado',district:'District #13',community:'Mamba Point',ownerContact:'231770444005',rooms:5,restrooms:3,price:850,freq:'1 year',amenities:['lec','generator','parking','security','duplex'],available:true,mine:false,views:112,color:'#6A5A9C',top:18,left:22,photoCount:5,lat:6.3100,lng:-10.8050,verified:true,premium:true,mainPhoto:null},
-  {id:6,rentalType:'Store/Shop',county:'Montserrado',district:'District #7',community:'Old Road',ownerContact:'231886777006',rooms:1,restrooms:1,price:120,freq:'6 months',amenities:['lwsc','fence'],available:true,mine:false,views:4,color:'#5A7A4A',top:62,left:28,photoCount:2,lat:6.3200,lng:-10.7900,verified:false,premium:false,mainPhoto:null},
-  {id:7,rentalType:'Residential',county:'Montserrado',district:'District #11',community:'Gardnersville',ownerContact:'231556123007',rooms:2,restrooms:1,price:280,freq:'6 months',amenities:['well','kitchen'],available:true,mine:false,views:11,color:'#C2664A',top:38,left:78,photoCount:3,lat:6.3300,lng:-10.6700,verified:false,premium:false,mainPhoto:null},
-  {id:8,rentalType:'Residential',county:'Montserrado',district:'District #16',community:'New Kru Town',ownerContact:'231860456008',rooms:2,restrooms:1,price:220,freq:'Negotiable',amenities:['lec','well'],available:true,mine:false,views:18,color:'#4A7A8C',top:80,left:50,photoCount:3,lat:6.3400,lng:-10.8200,verified:true,premium:false,mainPhoto:null},
-  {id:9,rentalType:'Residential',county:'Margibi',district:'District #2',community:'Kakata',ownerContact:'231779888009',rooms:3,restrooms:1,price:300,freq:'1 year',amenities:['generator','reservoir','parking'],available:true,mine:false,views:7,color:'#1C6B5A',top:25,left:60,photoCount:4,lat:6.5300,lng:-10.3600,verified:false,premium:false,mainPhoto:null},
-  {id:10,rentalType:'Residential',county:'Bong',district:'District #3',community:'Gbarnga',ownerContact:'231884321010',rooms:4,restrooms:2,price:350,freq:'1 year',amenities:['lec','well','fence'],available:true,mine:false,views:7,color:'#B8862E',top:50,left:15,photoCount:4,lat:6.9900,lng:-9.4700,verified:true,premium:true,mainPhoto:null},
-  {id:11,rentalType:'Store/Shop',county:'Nimba',district:'District #5',community:'Ganta',ownerContact:'231551122011',rooms:2,restrooms:1,price:260,freq:'Negotiable',amenities:['lec','security'],available:true,mine:false,views:3,color:'#3E7CB1',top:65,left:82,photoCount:2,lat:7.3800,lng:-8.9900,verified:false,premium:false,mainPhoto:null},
-  {id:12,rentalType:'Residential',county:'Grand Bassa',district:'District #1',community:'Buchanan',ownerContact:'231778899012',rooms:3,restrooms:1,price:310,freq:'6 months',amenities:['lwsc','kitchen','fence'],available:true,mine:false,views:5,color:'#A8553E',top:35,left:20,photoCount:3,lat:5.8800,lng:-10.0500,verified:false,premium:false,mainPhoto:null},
-  {id:13,rentalType:'Residential',county:'Grand Cape Mount',district:'District #1',community:'Robertsport',ownerContact:'231867744013',rooms:2,restrooms:1,price:190,freq:'Negotiable',amenities:['well','singleHouse'],available:true,mine:false,views:3,color:'#6A5A9C',top:78,left:30,photoCount:2,lat:6.7500,lng:-11.3700,verified:true,premium:false,mainPhoto:null},
-  {id:14,rentalType:'Office',county:'Lofa',district:'District #2',community:'Voinjama',ownerContact:'231552233014',rooms:4,restrooms:2,price:400,freq:'1 year',amenities:['lec','generator','parking','security'],available:true,mine:false,views:2,color:'#5A7A4A',top:15,left:55,photoCount:3,lat:8.4200,lng:-9.7500,verified:false,premium:false,mainPhoto:null},
-  {id:15,rentalType:'Residential',county:'Maryland',district:'District #1',community:'Harper',ownerContact:'231779911015',rooms:3,restrooms:2,price:330,freq:'6 months',amenities:['lwsc','kitchen','singleHouse'],available:true,mine:false,views:9,color:'#C2664A',top:60,left:45,photoCount:4,lat:4.3800,lng:-7.7200,verified:false,premium:false,mainPhoto:null}
-];
-let nextId = 16;
-let saved = new Set();
+let DATA = [];          // public, available listings — loaded from Supabase
+let myListings = [];    // this landlord's own listings (any availability) — loaded from Supabase
+let saved = new Set();  // ids of saved listings (DB-backed if seekerAccount exists, local-only otherwise)
 let activeType = 'All';
 let searchTerm = '';
 let minPrice = null;
@@ -398,6 +397,7 @@ let sortMode = 'newest';
 let mode = 'list';
 let offlineMode = false;
 
+let currentUserId = null;
 let landlordAccount = null;
 let seekerAccount = null;
 let seekerSex = '';
@@ -406,41 +406,24 @@ let regData = {};
 let listingStep = 1;
 let listingData = {};
 
-/* ---------------- storage helpers ----------------
-   Uses the artifact storage API so accounts and listings survive a reload
-   inside this Claude.ai preview. This is a preview-only convenience —
-   once hosted for real, Supabase replaces it entirely. */
-async function loadJSON(key, shared){
-  try{
-    const res = await window.storage.get(key, shared);
-    return res ? JSON.parse(res.value) : null;
-  }catch(e){ return null; }
-}
-async function saveJSON(key, obj, shared){
-  try{ await window.storage.set(key, JSON.stringify(obj), shared); }catch(e){}
-}
-async function deleteKey(key, shared){
-  try{ await window.storage.delete(key, shared); }catch(e){}
-}
-function stripBlob(url){ return (url && url.startsWith('blob:')) ? null : url; }
-function saveListings(){
-  const safe = DATA.map(d=>({...d, mainPhoto: stripBlob(d.mainPhoto)}));
-  saveJSON('listings', safe, true);
-}
-function saveLandlord(){ saveJSON('landlord-account', {...landlordAccount, photo: stripBlob(landlordAccount.photo)}, false); }
-function saveSeeker(){ saveJSON('seeker-account', seekerAccount, false); }
-
 function el(id){return document.getElementById(id);}
-function listingTitle(item){ return `${item.rentalType} — ${item.community}`; }
+function listingTitle(item){ return `${item.rental_type} — ${item.community}`; }
 function iconFor(item){
-  if(item.rentalType==='Office') return 'ic-office';
-  if(item.rentalType==='Store/Shop') return 'ic-shop';
-  if(item.amenities.includes('duplex')||item.amenities.includes('singleApt')) return 'ic-apt';
+  if(item.rental_type==='Office') return 'ic-office';
+  if(item.rental_type==='Store/Shop') return 'ic-shop';
+  if((item.amenities||[]).includes('duplex')||(item.amenities||[]).includes('singleApt')) return 'ic-apt';
   return 'ic-house';
 }
 function photoOrIcon(item, sizeClass){
-  if(item.mainPhoto) return `<img src="${item.mainPhoto}">`;
+  if(item.main_photo_url) return `<img src="${item.main_photo_url}">`;
   return `<svg class="${sizeClass}"><use href="#${iconFor(item)}"/></svg>`;
+}
+function pinPos(item){
+  // Stable pseudo-position on the demo map, derived from the listing id so it
+  // doesn't jump around between renders. Real lat/lng still power the GPS
+  // shown on the detail screen; this is only for the stylized map view.
+  const seed = item.id || 1;
+  return { top: 15 + ((seed*37)%70), left: 15 + ((seed*53)%70) };
 }
 function dotsHTML(n){
   let out='';
@@ -449,6 +432,22 @@ function dotsHTML(n){
 }
 function badgesHTML(item){
   return (item.verified?'<span class="verified-badge">✅ Verified</span>':'') + (item.premium?'<span class="featured-badge">⭐ Featured</span>':'');
+}
+
+/* ---------------- Supabase auth ---------------- */
+async function ensureAuth(){
+  const { data: { session } } = await db.auth.getSession();
+  if(session){
+    currentUserId = session.user.id;
+    return;
+  }
+  const { data, error } = await db.auth.signInAnonymously();
+  if(error){
+    console.error('Anonymous sign-in failed:', error.message);
+    showToast('Could not connect — please check your internet connection and reload.');
+    return;
+  }
+  currentUserId = data.user.id;
 }
 
 /* ---------------- header / filters ---------------- */
@@ -483,8 +482,8 @@ function setMode(m){
 }
 
 function filtered(){
-  let arr = DATA.filter(d=> d.available!==false &&
-    (activeType==='All'||d.rentalType===activeType) &&
+  let arr = DATA.filter(d=>
+    (activeType==='All'||d.rental_type===activeType) &&
     (minPrice===null||d.price>=minPrice) &&
     (maxPrice===null||d.price<=maxPrice) &&
     (d.community.toLowerCase().includes(searchTerm)||d.district.toLowerCase().includes(searchTerm)||d.county.toLowerCase().includes(searchTerm))
@@ -499,16 +498,16 @@ function cardHTML(item){
   const isSaved = saved.has(item.id);
   return `
   <div class="card">
-    <div class="card-photo" style="background:linear-gradient(135deg,${item.color},${item.color}cc);" onclick="openDetail(${item.id})">
+    <div class="card-photo" style="background:linear-gradient(135deg,${item.color||'#1C6B5A'},${item.color||'#1C6B5A'}cc);" onclick="openDetail(${item.id})">
       ${photoOrIcon(item,'card-icon')}
-      <span class="photo-badge">${item.photoCount} 📷</span>
+      <span class="photo-badge">📷 photos</span>
       <span class="plate-tag">${item.rooms} Rm</span>
       <button class="key-save ${isSaved?'saved':''}" onclick="event.stopPropagation();toggleSave(${item.id})">🔑</button>
     </div>
     <div class="card-body" onclick="openDetail(${item.id})">
       <div class="card-title">${listingTitle(item)}${badgesHTML(item)}</div>
       <div class="card-loc">📍 ${item.community}, ${item.county} County</div>
-      <div class="card-price">$${item.price} <span>/ ${item.freq}</span></div>
+      <div class="card-price">$${item.price} <span>/ ${item.payment_frequency}</span></div>
     </div>
   </div>`;
 }
@@ -516,20 +515,30 @@ function cardHTML(item){
 function renderHome(){
   const list = filtered();
   el('listGrid').innerHTML = list.length ? list.map(cardHTML).join('') :
-    `<div class="empty-state"><div class="big">🏚️</div>No listings match yet.<br>Try a different filter.</div>`;
+    `<div class="empty-state"><div class="big">🏚️</div>No listings match yet.<br>Try a different filter, or be the first to post one!</div>`;
   if(mode==='map') renderMap();
 }
 function renderMap(){
   const list = filtered();
-  el('mapPins').innerHTML = list.map(item=>
-    `<button class="map-pin" style="top:${item.top}%;left:${item.left}%;" onclick="openDetail(${item.id})">$${item.price}</button>`
-  ).join('');
+  el('mapPins').innerHTML = list.map(item=>{
+    const p = pinPos(item);
+    return `<button class="map-pin" style="top:${p.top}%;left:${p.left}%;" onclick="openDetail(${item.id})">$${item.price}</button>`;
+  }).join('');
 }
-function toggleSave(id){
-  if(saved.has(id)) saved.delete(id); else saved.add(id);
-  if(seekerAccount){ seekerAccount.saved = Array.from(saved); saveSeeker(); }
+
+async function toggleSave(id){
+  const nowSaving = !saved.has(id);
+  if(seekerAccount){
+    if(nowSaving){
+      const { error } = await db.from('saved_listings').insert({ seeker_id: seekerAccount.id, listing_id: id });
+      if(error){ showToast('Could not save — please try again'); return; }
+    } else {
+      await db.from('saved_listings').delete().eq('seeker_id', seekerAccount.id).eq('listing_id', id);
+    }
+  }
+  if(nowSaving) saved.add(id); else saved.delete(id);
   renderHome(); renderSaved();
-  showToast(saved.has(id) ? '🔑 Saved' : 'Removed from saved');
+  showToast(nowSaving ? '🔑 Saved' : 'Removed from saved');
   const icon = document.getElementById('detailSaveIcon');
   if(icon && Number(icon.dataset.id)===id) icon.classList.toggle('saved', saved.has(id));
 }
@@ -554,7 +563,11 @@ function showToast(msg){
 }
 function closeModal(id){ el(id).classList.add('hidden'); }
 function openSafety(){ el('disclaimerText').innerHTML = DISCLAIMER_HTML; el('safetyModal').classList.remove('hidden'); }
-function reportListing(id){ showToast("Thank you — our team will review this listing."); }
+
+async function reportListing(id){
+  await db.from('reports').insert({ category:'Complaint', message:'Visitor flagged listing #'+id+' for review.', contact:null });
+  showToast("Thank you — our team will review this listing.");
+}
 
 /* ---------------- site-wide report ---------------- */
 let reportCat = '';
@@ -570,42 +583,42 @@ function openReportModal(){
   ['catScam','catComplaint','catRec','catOther'].forEach(id=>el(id).classList.remove('active'));
   el('reportModal').classList.remove('hidden');
 }
-function submitReport(){
+async function submitReport(){
   const msg = el('reportMsg').value.trim();
   if(!reportCat || !msg){ showToast('Please choose a category and describe the issue'); return; }
-  const contact = el('reportContact').value.trim();
-  saveJSON('report-'+Date.now(), {category:reportCat, message:msg, contact, time:new Date().toISOString()}, true);
+  const contact = el('reportContact').value.trim() || null;
+  const { error } = await db.from('reports').insert({ category:reportCat, message:msg, contact });
+  if(error){ showToast('Could not submit — please check your connection and try again'); return; }
   closeModal('reportModal');
   showToast('Thank you — our team will review this within 24 hours.');
 }
 
 /* ---------------- detail ---------------- */
-function openDetail(id){
-  const item = DATA.find(d=>d.id===id);
+async function openDetail(id){
+  const item = DATA.find(d=>d.id===id) || myListings.find(d=>d.id===id);
   if(!item) return;
-  item.views++;
+  db.rpc('increment_listing_views', { listing_id: id }); // fire and forget
   const isSaved = saved.has(id);
-  const amenityHTML = item.amenities.map(a=>`<span class="amenity-pill">${AMENITIES[a]}</span>`).join('') || '<span class="amenity-pill">None listed</span>';
-  const waText = "Hi, I saw your "+item.rentalType+" listing in "+item.community+" on Places4Lease and I am interested.";
-  const gps = item.lat ? ` · GPS ${item.lat.toFixed(3)}, ${item.lng.toFixed(3)}` : '';
+  const amenityHTML = (item.amenities||[]).map(a=>`<span class="amenity-pill">${AMENITIES[a]||a}</span>`).join('') || '<span class="amenity-pill">None listed</span>';
+  const waText = "Hi, I saw your "+item.rental_type+" listing in "+item.community+" on Places4Lease and I am interested.";
+  const gps = item.lat ? ` · GPS ${Number(item.lat).toFixed(3)}, ${Number(item.lng).toFixed(3)}` : '';
   el('detailSheet').innerHTML = `
     <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
-    <div class="detail-photo" style="background:linear-gradient(135deg,${item.color},${item.color}cc);">
+    <div class="detail-photo" style="background:linear-gradient(135deg,${item.color||'#1C6B5A'},${item.color||'#1C6B5A'}cc);">
       ${photoOrIcon(item,'detail-icon')}
       <button id="detailSaveIcon" data-id="${item.id}" class="key-save ${isSaved?'saved':''}" style="position:absolute;top:10px;right:10px;" onclick="toggleSave(${item.id})">🔑</button>
     </div>
-    <div class="dots">${dotsHTML(item.photoCount)}</div>
     <div>
       <span class="detail-plate">${item.rooms} Room${item.rooms>1?'s':''} · ${item.restrooms} Restroom${item.restrooms>1?'s':''}</span>
-      <span class="detail-type">${item.rentalType}</span>${badgesHTML(item)}
+      <span class="detail-type">${item.rental_type}</span>${badgesHTML(item)}
     </div>
     <div class="detail-title">${listingTitle(item)}</div>
     <div class="detail-loc">📍 ${item.community}, ${item.district}, ${item.county} County${gps}</div>
-    <div class="detail-price">$${item.price} <span style="font-size:13px;font-weight:600;color:var(--muted);">/ ${item.freq}</span></div>
+    <div class="detail-price">$${item.price} <span style="font-size:13px;font-weight:600;color:var(--muted);">/ ${item.payment_frequency}</span></div>
     <div class="amenity-row">${amenityHTML}</div>
     <div class="cta-row">
-      <a class="btn btn-whatsapp" target="_blank" href="https://wa.me/${item.ownerContact}?text=${encodeURIComponent(waText)}">💬 Chat on WhatsApp</a>
-      <a class="btn btn-outline" href="tel:+${item.ownerContact}">📞 Call</a>
+      <a class="btn btn-whatsapp" target="_blank" href="https://wa.me/${item.owner_contact}?text=${encodeURIComponent(waText)}">💬 Chat on WhatsApp</a>
+      <a class="btn btn-outline" href="tel:+${item.owner_contact}">📞 Call</a>
     </div>
     <div class="field-hint" style="text-align:center;margin-top:10px;">⚠️ Always verify a property in person before paying anyone. <a class="safety-link" href="#" onclick="openSafety();return false;">Read our safety notice</a></div>
     <div style="text-align:center;margin-top:6px;"><a class="safety-link" href="#" style="color:#A33;" onclick="reportListing(${item.id});return false;">🚩 Report this listing</a></div>`;
@@ -613,16 +626,21 @@ function openDetail(id){
 }
 
 /* ---------------- dashboard ---------------- */
-function renderDashboard(){
-  const mine = DATA.filter(d=>d.mine);
-  const list = mine.length ? mine.map(item=>`
+async function loadMyListings(){
+  if(!landlordAccount){ myListings = []; return; }
+  const { data, error } = await db.from('listings').select('*').eq('landlord_id', currentUserId).order('id', { ascending:false });
+  myListings = data || [];
+}
+async function renderDashboard(){
+  await loadMyListings();
+  const list = myListings.length ? myListings.map(item=>`
     <div class="dash-card">
       <div class="dash-top">
-        <div class="dash-thumb" style="background:${item.color};">${photoOrIcon(item,'')}</div>
+        <div class="dash-thumb" style="background:${item.color||'#1C6B5A'};">${photoOrIcon(item,'')}</div>
         <div class="dash-info">
           <div class="dash-title">${listingTitle(item)}${badgesHTML(item)}</div>
           <span class="status-badge ${item.available?'on':'off'}">${item.available?'Active':'Not available'}</span>
-          <div class="dash-stats">${item.views} views · $${item.price} / ${item.freq}</div>
+          <div class="dash-stats">${item.views||0} views · $${item.price} / ${item.payment_frequency}</div>
         </div>
         <div class="dash-actions">
           <button onclick="showToast('Edit screen coming soon')">✏️</button>
@@ -648,12 +666,22 @@ function renderDashboard(){
     ${growCard}
     ${list}`;
 }
-function deleteListing(id){ DATA = DATA.filter(d=>d.id!==id); saveListings(); renderDashboard(); renderHome(); showToast('Listing deleted'); }
-function toggleAvailable(id){
-  const item = DATA.find(d=>d.id===id);
+async function deleteListing(id){
+  const { error } = await db.from('listings').delete().eq('id', id);
+  if(error){ showToast('Could not delete — please try again'); return; }
+  myListings = myListings.filter(d=>d.id!==id);
+  renderDashboard();
+  await loadListings(); renderHome();
+  showToast('Listing deleted');
+}
+async function toggleAvailable(id){
+  const item = myListings.find(d=>d.id===id);
+  if(!item) return;
+  const { error } = await db.from('listings').update({ available: !item.available }).eq('id', id);
+  if(error){ showToast('Could not update — please try again'); return; }
   item.available = !item.available;
-  saveListings();
-  renderDashboard(); renderHome();
+  renderDashboard();
+  await loadListings(); renderHome();
   showToast(item.available ? 'Listing is active and visible again' : 'Listing hidden from public view');
 }
 function requestPremium(){
@@ -666,22 +694,21 @@ function requestVerification(){
 /* ---------------- profile ---------------- */
 function waBadge(state){
   if(state==='confirmed') return '<span class="verified-chip">✅ Confirmed</span>';
-  if(state==='pending') return '<span class="status-pill pill-pending" style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:#FBF3E4;color:var(--brass-dark);">📨 Pending review</span>';
+  if(state==='pending') return '<span class="status-pill" style="font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;background:#FBF3E4;color:var(--brass-dark);">📨 Pending review</span>';
   return '';
 }
 function renderProfile(){
   const acctHTML = landlordAccount ? `
     <div class="profile-card">
       <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">🏠 Landlord account</h3>
-      <div class="profile-avatar">${landlordAccount.photo ? `<img src="${landlordAccount.photo}">` : (landlordAccount.name ? landlordAccount.name.split(' ').map(w=>w[0]).slice(0,2).join('') : '?')}</div>
+      <div class="profile-avatar">${landlordAccount.name ? landlordAccount.name.split(' ').map(w=>w[0]).slice(0,2).join('') : '?'}</div>
       <div class="profile-row"><span>Name</span><span>${landlordAccount.name}</span></div>
       <div class="profile-row"><span>Sex</span><span>${landlordAccount.sex}</span></div>
       <div class="profile-row"><span>Country</span><span>${landlordAccount.country}</span></div>
       <div class="profile-row"><span>County of residence</span><span>${landlordAccount.county}</span></div>
-      <div class="profile-row"><span>WhatsApp number</span><span>${landlordAccount.whatsapp} ${waBadge(landlordAccount.waConfirmed)}</span></div>
+      <div class="profile-row"><span>WhatsApp number</span><span>${landlordAccount.whatsapp} ${waBadge(landlordAccount.wa_status)}</span></div>
       <div class="profile-row"><span>Mobile money number</span><span>${landlordAccount.momo}</span></div>
       <div class="profile-row" style="border-bottom:none;"><span>Email</span><span>${landlordAccount.email||'—'}</span></div>
-      <a class="safety-link" href="#" onclick="openRegistration();return false;">↻ Preview the registration form again</a><br>
       <a class="safety-link" href="#" style="color:#A33;" onclick="logoutLandlord();return false;">🚪 Log out of landlord account</a>
     </div>` : `
     <div class="profile-card">
@@ -699,13 +726,13 @@ function renderProfile(){
       <div class="profile-row" style="border-bottom:none;"><span>Saved listings</span><span>${saved.size} saved</span></div>
       <div class="toggle-row" style="padding:10px 0;">
         <span style="font-size:13px;font-weight:600;">🔔 Notify me about new listings</span>
-        <button class="switch ${seekerAccount.alerts?'on':''}" onclick="toggleSeekerAlerts()"></button>
+        <button class="switch ${seekerAccount.alerts_enabled?'on':''}" onclick="toggleSeekerAlerts()"></button>
       </div>
       <a class="safety-link" href="#" style="color:#A33;" onclick="logoutSeeker();return false;">🚪 Log out of seeker account</a>
     </div>` : `
     <div class="profile-card">
       <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">🔎 Seeker account</h3>
-      <p class="field-hint" style="margin-top:0;">Optional — you can browse and save listings without an account. Creating one keeps your saved listings and alerts on this device across visits, and signs you in automatically next time.</p>
+      <p class="field-hint" style="margin-top:0;">Optional — you can browse and save listings without an account. Creating one keeps your saved listings and alerts across visits, and signs you in automatically next time on this device.</p>
       <div class="field-label">Name</div>
       <input class="field-input" id="skName" placeholder="Your name">
       <div class="field-label">Sex</div>
@@ -730,7 +757,6 @@ function renderProfile(){
       <div class="profile-row"><span>Phone</span><span><a href="tel:${SITE_CONTACT.phoneRaw}">${SITE_CONTACT.phone}</a></span></div>
       <div class="profile-row"><span>Email</span><span><a href="mailto:${SITE_CONTACT.email}">${SITE_CONTACT.email}</a></span></div>
       <div class="profile-row" style="border-bottom:none;"><span>Address</span><span>${SITE_CONTACT.address}</span></div>
-      <div class="field-hint" style="margin-top:8px;">Placeholder details — swap in your real phone, email and office address.</div>
     </div>
     ${acctHTML}
     ${seekerHTML}
@@ -742,33 +768,45 @@ function renderProfile(){
     </div>`;
 }
 function setSeekerSex(s){ seekerSex=s; el('skSexM').classList.toggle('active', s==='Male'); el('skSexF').classList.toggle('active', s==='Female'); }
-function createSeekerAccount(){
+async function createSeekerAccount(){
   const name = el('skName').value.trim();
   const wa = el('skWa').value.trim();
   const email = el('skEmail').value.trim();
   if(!name || !seekerSex || !wa || !email){ showToast('Please complete name, sex, WhatsApp number and email'); return; }
-  seekerAccount = {name, sex:seekerSex, whatsapp:wa, email, marketingOptIn:el('skMarketing').checked, saved:Array.from(saved), alerts:true};
-  saveSeeker();
+  const { data, error } = await db.from('seekers').insert({
+    id: currentUserId, name, sex: seekerSex, whatsapp: wa, email,
+    marketing_opt_in: el('skMarketing').checked
+  }).select().single();
+  if(error){ showToast('Could not create account — please try again'); console.error(error); return; }
+  seekerAccount = data;
+  await loadSavedListings();
   renderProfile();
   showToast('🎉 Seeker account created — your saved listings will now be remembered');
 }
-function toggleSeekerAlerts(){
+async function loadSavedListings(){
+  if(!seekerAccount){ return; }
+  const { data } = await db.from('saved_listings').select('listing_id').eq('seeker_id', seekerAccount.id);
+  saved = new Set((data||[]).map(r=>r.listing_id));
+}
+async function toggleSeekerAlerts(){
   if(!seekerAccount) return;
-  seekerAccount.alerts = !seekerAccount.alerts;
-  saveSeeker();
+  const newVal = !seekerAccount.alerts_enabled;
+  const { error } = await db.from('seekers').update({ alerts_enabled: newVal }).eq('id', seekerAccount.id);
+  if(error){ showToast('Could not update — please try again'); return; }
+  seekerAccount.alerts_enabled = newVal;
   renderProfile();
 }
-function logoutSeeker(){
+async function logoutSeeker(){
   seekerAccount = null;
-  deleteKey('seeker-account', false);
+  saved = new Set();
   renderProfile();
-  showToast('Logged out of seeker account');
+  showToast('Logged out of seeker account on this device');
 }
-function logoutLandlord(){
+async function logoutLandlord(){
   landlordAccount = null;
-  deleteKey('landlord-account', false);
+  myListings = [];
   renderProfile();
-  showToast('Logged out of landlord account');
+  showToast('Logged out of landlord account on this device');
 }
 function toggleOffline(){
   offlineMode = !offlineMode;
@@ -782,7 +820,7 @@ function handlePostTap(){
 }
 function openRegistration(){
   regStep = 1;
-  regData = {name:'',sex:'',country:'Liberia',county:'',whatsapp:'',momo:'',email:'',marketingOptIn:false,photo:null,waConfirmed:false};
+  regData = {name:'',sex:'',country:'Liberia',county:'',whatsapp:'',momo:'',email:'',marketingOptIn:false,waConfirmed:'pending'};
   renderRegStep();
   el('regModal').classList.remove('hidden');
 }
@@ -791,10 +829,7 @@ function contactFooter(){
 }
 function verifyBoxHTML(){
   const has = regData.whatsapp && regData.whatsapp.trim().length>0;
-  if(regData.waConfirmed==='confirmed'){
-    return `<div class="verify-ok">✅ WhatsApp number confirmed</div>`;
-  }
-  if(regData.waConfirmed==='pending'){
+  if(regData.waConfirmed==='sent'){
     return `<div class="verify-ok" style="color:var(--brass-dark);">📨 Message sent — pending review. We typically confirm within a few hours.</div>`;
   }
   if(!has){
@@ -802,14 +837,14 @@ function verifyBoxHTML(){
             <div class="field-hint">Enter your WhatsApp number above to enable this.</div>`;
   }
   return `<p style="font-size:13px;color:var(--muted);margin:0 0 10px;">Tap below to open WhatsApp and send a one-tap message to our verification number <strong style="color:var(--ink);">${PLATFORM_WHATSAPP_DISPLAY}</strong>. Sending it proves the number is yours — free, takes a few seconds.</p>
-          <a class="btn btn-whatsapp" href="https://wa.me/${PLATFORM_WHATSAPP_RAW}?text=${encodeURIComponent('Hi Places4Lease, my name is '+(regData.name||'')+' and I am confirming my number to register as a landlord.')}" target="_blank" onclick="markWaPending()">💬 Send WhatsApp message to confirm</a>`;
+          <a class="btn btn-whatsapp" href="https://wa.me/${PLATFORM_WHATSAPP_RAW}?text=${encodeURIComponent('Hi Places4Lease, my name is '+(regData.name||'')+' and I am confirming my number to register as a landlord.')}" target="_blank" onclick="markWaSent()">💬 Send WhatsApp message to confirm</a>`;
 }
 function updateVerifyBox(){
   const box = el('verifyBoxContainer');
   if(box) box.innerHTML = verifyBoxHTML();
 }
-function markWaPending(){
-  regData.waConfirmed = 'pending';
+function markWaSent(){
+  regData.waConfirmed = 'sent';
   updateVerifyBox();
 }
 function onWaInput(v){
@@ -851,24 +886,18 @@ function renderRegStep(){
       </div>`;
   } else if(regStep===3){
     body = `
-      <p style="font-size:13.5px;color:var(--muted);margin:0 0 4px;">Add a clear photo of yourself. We use this only to confirm you are a real property owner and to help catch scammers — it is never published or shown publicly on the site.</p>
-      <div class="avatar-upload">
-        <div class="avatar-preview" id="avatarPreview">${regData.photo ? `<img src="${regData.photo}">` : '📷'}</div>
-        <input type="file" id="rPhoto" accept="image/*" capture="user" style="display:none" onchange="onAvatarChosen(event)">
-        <button class="btn btn-brass" style="display:inline-block;padding:10px 22px;" onclick="document.getElementById('rPhoto').click()">${regData.photo?'Change photo':'Take or choose a photo'}</button>
-      </div>`;
-  } else if(regStep===4){
-    body = `
       <div class="disclaimer-box">${DISCLAIMER_HTML}</div>
       <div class="agree-row">
         <input type="checkbox" id="rAgree">
         <label for="rAgree">${AGREE_TEXT}</label>
       </div>`;
+  } else if(regStep===4){
+    body = `<div class="verify-ok">🎉 Almost done — tap below to finish creating your account.</div>`;
   }
   el('regSheet').innerHTML = `
     <button class="modal-close" onclick="closeModal('regModal')">✕</button>
     <div class="step-indicator">Landlord account · Step ${regStep} of ${total}</div>
-    <div class="step-title">${['Tell us about you','Your contact numbers','Your photo','Review &amp; agree'][regStep-1]}</div>
+    <div class="step-title">${['Tell us about you','Your contact numbers','Review &amp; agree','Finish'][regStep-1]}</div>
     ${body}
     <div class="step-nav">
       ${regStep>1?`<button class="btn btn-ghost" style="flex:0 0 auto;" onclick="changeRegStep(-1)">← Back</button>`:''}
@@ -892,19 +921,25 @@ function changeRegStep(dir){
       if(!regData.whatsapp || !regData.momo || !regData.email){ showToast('Please fill in your WhatsApp number, mobile money number and email'); return; }
     }
     if(regStep===3){
-      if(!regData.photo){ showToast('Please add a photo to continue'); return; }
+      if(!el('rAgree').checked){ showToast('Please check the box to agree before continuing'); return; }
     }
   }
   regStep += dir;
   renderRegStep();
 }
-function onAvatarChosen(e){
-  if(e.target.files[0]){ regData.photo = URL.createObjectURL(e.target.files[0]); renderRegStep(); }
-}
-function createAccount(){
-  if(!el('rAgree').checked){ showToast('Please check the box to agree before continuing'); return; }
-  landlordAccount = {...regData};
-  saveLandlord();
+async function createAccount(){
+  const { data, error } = await db.from('landlords').insert({
+    id: currentUserId,
+    name: regData.name, sex: regData.sex, country: regData.country, county: regData.county,
+    whatsapp: regData.whatsapp, momo: regData.momo, email: regData.email,
+    marketing_opt_in: regData.marketingOptIn, agreed_terms: true
+  }).select().single();
+  if(error){
+    showToast('Could not create account — please check your connection and try again');
+    console.error(error);
+    return;
+  }
+  landlordAccount = data;
   closeModal('regModal');
   showToast('🎉 Account created! Now add your first listing.');
   openListingFlow();
@@ -990,13 +1025,13 @@ function renderListingStep(){
         </div>`).join('')}`;
   } else if(listingStep===5){
     body = `
-      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Photos are automatically compressed so your listing loads fast, even on slow connections.</p>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Photo storage is being finished in our next update — for now, photos preview here but are not yet saved to the live listing. Everything else on this listing saves and works normally.</p>
       <div class="photo-slot-grid">
         ${PHOTO_SLOTS.map(s=>{
           const f = listingData.photoSlots[s.key];
           return `<div class="photo-slot" style="${s.main?'border-color:var(--brass);background:#FBF3E4;':''}">
             ${f ? `<img src="${URL.createObjectURL(f)}">` : `<div class="ph-placeholder">📷</div>`}
-            <div class="ph-label">${s.label}${s.main?`<br><span style="color:var(--brass-dark);font-weight:700;font-size:11px;">⭐ This becomes your listing's main photo</span>`:''}</div>
+            <div class="ph-label">${s.label}${s.main?`<br><span style="color:var(--brass-dark);font-weight:700;font-size:11px;">⭐ Main photo (preview only for now)</span>`:''}</div>
             <input type="file" accept="image/*" id="slot_${s.key}" style="display:none" onchange="onSlotChosen('${s.key}',this)">
             <button class="slot-btn" onclick="document.getElementById('slot_${s.key}').click()">${f?'Change':'Add photo'}</button>
           </div>`;
@@ -1013,7 +1048,7 @@ function renderListingStep(){
       <div class="summary-row"><span>Rooms / Restrooms</span><span>${listingData.rooms} / ${listingData.restrooms}</span></div>
       <div class="summary-row"><span>Price</span><span>$${listingData.price||'0'} / ${listingData.freq}</span></div>
       <div class="summary-row"><span>Amenities</span><span>${a}</span></div>
-      <div class="summary-row"><span>Photos added</span><span>${photoCount} of 5</span></div>
+      <div class="summary-row"><span>Photos added (preview only)</span><span>${photoCount} of 5</span></div>
       <div class="dash-toggle-row" style="margin-top:14px;">
         <span>Is this property still available?</span>
         <button class="switch ${listingData.available?'on':''}" onclick="listingData.available=!listingData.available;renderListingStep();"></button>
@@ -1057,41 +1092,57 @@ function changeListingStep(dir){
   listingStep += dir;
   renderListingStep();
 }
-function publishListing(){
+async function publishListing(){
   if(offlineMode){
     closeModal('listingModal');
     showToast('📴 Saved on your phone — will publish once you reconnect');
     return;
   }
-  const colors = ['#1C6B5A','#B8862E','#3E7CB1','#A8553E','#6A5A9C','#5A7A4A'];
-  const frontFile = listingData.photoSlots.front;
-  DATA.unshift({
-    id:nextId++, rentalType:listingData.rentalType, county:listingData.county, district:listingData.district,
-    community:listingData.community, ownerContact:listingData.ownerContact, rooms:listingData.rooms,
-    restrooms:listingData.restrooms, price:Number(listingData.price)||0, freq:listingData.freq,
-    amenities:listingData.amenities, available:listingData.available, mine:true, views:0,
-    color:colors[Math.floor(Math.random()*colors.length)], top:20+Math.random()*55, left:20+Math.random()*55,
-    photoCount: Math.max(1, Object.values(listingData.photoSlots).filter(Boolean).length),
-    lat:listingData.lat, lng:listingData.lng, verified:false, premium:false,
-    mainPhoto: frontFile ? URL.createObjectURL(frontFile) : null
-  });
-  saveListings();
+  const { data, error } = await db.from('listings').insert({
+    landlord_id: currentUserId,
+    rental_type: listingData.rentalType,
+    county: listingData.county, district: listingData.district, community: listingData.community,
+    owner_contact: listingData.ownerContact,
+    rooms: listingData.rooms, restrooms: listingData.restrooms,
+    price: Number(listingData.price)||0, payment_frequency: listingData.freq,
+    amenities: listingData.amenities, available: listingData.available,
+    lat: listingData.lat, lng: listingData.lng
+  }).select().single();
+  if(error){
+    showToast('Could not publish — please check your connection and try again');
+    console.error(error);
+    return;
+  }
   closeModal('listingModal');
-  showView('home'); renderHome();
+  showView('home');
+  await loadListings();
+  renderHome();
   showToast('🎉 Listing published!');
+}
+
+/* ---------------- data loading ---------------- */
+async function loadListings(){
+  const { data, error } = await db.from('listings').select('*').eq('available', true).order('id', { ascending:false });
+  if(error){ console.error(error); DATA = []; return; }
+  const colors = ['#1C6B5A','#B8862E','#3E7CB1','#A8553E','#6A5A9C','#5A7A4A'];
+  DATA = (data||[]).map((d,i)=>({...d, color: colors[i % colors.length]}));
+}
+async function loadLandlordAccount(){
+  const { data } = await db.from('landlords').select('*').eq('id', currentUserId).maybeSingle();
+  landlordAccount = data || null;
+}
+async function loadSeekerAccount(){
+  const { data } = await db.from('seekers').select('*').eq('id', currentUserId).maybeSingle();
+  seekerAccount = data || null;
 }
 
 /* ---------------- init ---------------- */
 async function init(){
-  const storedListings = await loadJSON('listings', true);
-  if(storedListings && storedListings.length){ DATA = storedListings; }
-  else { saveListings(); }
-  nextId = DATA.reduce((m,d)=>Math.max(m,d.id),0) + 1;
-
-  landlordAccount = await loadJSON('landlord-account', false);
-  seekerAccount = await loadJSON('seeker-account', false);
-  if(seekerAccount && seekerAccount.saved){ saved = new Set(seekerAccount.saved); }
-
+  await ensureAuth();
+  await loadLandlordAccount();
+  await loadSeekerAccount();
+  await loadSavedListings();
+  await loadListings();
   el('loadingOverlay').classList.add('hidden');
   renderChips();
   renderHome();
