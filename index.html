@@ -678,12 +678,15 @@ async function openDetail(id){
   const waText = "Hi, I saw your "+item.rental_type+" listing in "+item.community+" on Places4Lease and I am interested.";
   const gps = item.lat ? ` · GPS ${Number(item.lat).toFixed(3)}, ${Number(item.lng).toFixed(3)}` : '';
   const iconId = iconFor(item);
-  // Build the photo array for the gallery
+  // Build gallery from real DB-stored photo URLs
   detailPhotos = [];
-  if(item.main_photo_url) detailPhotos.push(item.main_photo_url);
-  // Additional photo slots show as icon placeholders until full photo storage is activated
-  const totalSlots = Math.max(item.photo_count||0, detailPhotos.length, 1);
-  while(detailPhotos.length < totalSlots) detailPhotos.push(null);
+  if(item.photo_urls && item.photo_urls.length > 0){
+    detailPhotos = [...item.photo_urls];          // full gallery — all uploaded slots
+  } else if(item.main_photo_url){
+    detailPhotos = [item.main_photo_url];         // older listing — main photo only
+  } else {
+    detailPhotos = [null];                        // no photos yet — show icon
+  }
   detailPhotoIdx = 0;
   const hasNav = detailPhotos.length > 1;
   const firstSlot = detailPhotos[0]
@@ -1136,13 +1139,13 @@ function renderListingStep(){
         </div>`).join('')}`;
   } else if(listingStep===5){
     body = `
-      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">Photo storage is being finished in our next update — for now, photos preview here but are not yet saved to the live listing. Everything else on this listing saves and works normally.</p>
+      <p style="font-size:13px;color:var(--muted);margin:0 0 4px;">All photos are compressed automatically and stored permanently with your listing. Visitors can browse every photo you upload using the arrows in the listing gallery.</p>
       <div class="photo-slot-grid">
         ${PHOTO_SLOTS.map(s=>{
           const f = listingData.photoSlots[s.key];
           return `<div class="photo-slot" style="${s.main?'border-color:var(--brass);background:#FBF3E4;':''}">
             ${f ? `<img src="${URL.createObjectURL(f)}">` : `<div class="ph-placeholder">📷</div>`}
-            <div class="ph-label">${s.label}${s.main?`<br><span style="color:var(--brass-dark);font-weight:700;font-size:11px;">⭐ Main photo (preview only for now)</span>`:''}</div>
+            <div class="ph-label">${s.label}${s.main?`<br><span style="color:var(--brass-dark);font-weight:700;font-size:11px;">⭐ This is your listing's main photo (shown first)</span>`:''}</div>
             <input type="file" accept="image/*" id="slot_${s.key}" style="display:none" onchange="onSlotChosen('${s.key}',this)">
             <button class="slot-btn" onclick="document.getElementById('slot_${s.key}').click()">${f?'Change':'Add photo'}</button>
           </div>`;
@@ -1159,7 +1162,7 @@ function renderListingStep(){
       <div class="summary-row"><span>Rooms / Restrooms</span><span>${listingData.rooms} / ${listingData.restrooms}</span></div>
       <div class="summary-row"><span>Price</span><span>$${listingData.price||'0'} / ${listingData.freq}</span></div>
       <div class="summary-row"><span>Amenities</span><span>${a}</span></div>
-      <div class="summary-row"><span>Photos added (preview only)</span><span>${photoCount} of 5</span></div>
+      <div class="summary-row"><span>Photos</span><span>${photoCount} of 5 (all will be uploaded)</span></div>
       <div class="dash-toggle-row" style="margin-top:14px;">
         <span>Is this property still available?</span>
         <button class="switch ${listingData.available?'on':''}" onclick="listingData.available=!listingData.available;renderListingStep();"></button>
@@ -1203,30 +1206,41 @@ function changeListingStep(dir){
   listingStep += dir;
   renderListingStep();
 }
-async function uploadPhoto(file, folder){
+/* ---------------- photo upload ---------------- */
+async function uploadPhoto(file, path){
   if(!file) return null;
   try {
-    const ext = file.name.split('.').pop() || 'jpg';
-    const path = `${folder}/${currentUserId}-${Date.now()}.${ext}`;
-    const { error } = await db.storage.from('listing-photos').upload(path, file, { upsert: true });
-    if(error){ console.error('Photo upload error:', error.message); return null; }
+    const { error } = await db.storage.from('listing-photos').upload(path, file, { upsert:true });
+    if(error){ console.error('Upload error:', error.message); return null; }
     const { data } = db.storage.from('listing-photos').getPublicUrl(path);
     return data.publicUrl;
-  } catch(e){ console.error('Photo upload exception:', e); return null; }
+  } catch(e){ console.error('Upload exception:', e); return null; }
 }
+
 async function publishListing(){
   if(offlineMode){
     closeModal('listingModal');
     showToast('📴 Saved on your phone — will publish once you reconnect');
     return;
   }
-  showToast('Publishing…');
-  // Upload main (front-of-building) photo if provided
-  let mainPhotoUrl = null;
-  if(listingData.photoSlots.front){
-    mainPhotoUrl = await uploadPhoto(listingData.photoSlots.front, 'main');
-    if(!mainPhotoUrl) showToast('Photo could not be uploaded — listing will publish without it');
-  }
+  showToast('Uploading photos and publishing…');
+
+  // Upload all five photo slots in parallel for speed
+  const slots = PHOTO_SLOTS.map(s=>s.key);
+  const uploads = await Promise.all(slots.map(key=>{
+    const file = listingData.photoSlots[key];
+    if(!file) return Promise.resolve(null);
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `${currentUserId}-${Date.now()}-${key}.${ext}`;
+    return uploadPhoto(file, path);
+  }));
+
+  // uploads array order matches PHOTO_SLOTS order:
+  // [rooms, sitting, kitchen, back, front]
+  const frontIdx = PHOTO_SLOTS.findIndex(s=>s.main);
+  const mainPhotoUrl = uploads[frontIdx] || uploads.find(u=>u) || null;
+  const photoUrls = uploads.filter(Boolean);
+
   const { data, error } = await db.from('listings').insert({
     landlord_id: currentUserId,
     rental_type: listingData.rentalType,
@@ -1236,8 +1250,10 @@ async function publishListing(){
     price: Number(listingData.price)||0, payment_frequency: listingData.freq,
     amenities: listingData.amenities, available: listingData.available,
     lat: listingData.lat, lng: listingData.lng,
-    main_photo_url: mainPhotoUrl
+    main_photo_url: mainPhotoUrl,
+    photo_urls: photoUrls
   }).select().single();
+
   if(error){
     showToast('Could not publish — please check your connection and try again');
     console.error(error);
@@ -1250,9 +1266,50 @@ async function publishListing(){
   showToast('🎉 Listing published!');
 }
 
+/* ---------------- geocoding (Nominatim / OpenStreetMap — free, no key needed) ---------------- */
+const geocodeCache = new Map();
+
+async function geocodeItem(item){
+  if((item.lat && item.lng) || geocodeCache.get('fail:'+item.id)) return;
+  const q = `${item.community}, ${item.county}, Liberia`;
+  if(geocodeCache.has(q)){
+    const c = geocodeCache.get(q);
+    item.lat = c.lat; item.lng = c.lng;
+    return;
+  }
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&countrycodes=lr`,
+      { headers: { 'User-Agent': 'Places4Lease/1.0 (info@places4lease.com)' } }
+    );
+    const json = await res.json();
+    if(json && json[0]){
+      const lat = parseFloat(json[0].lat), lng = parseFloat(json[0].lon);
+      geocodeCache.set(q, {lat, lng});
+      item.lat = lat; item.lng = lng;
+      // Silently save coordinates back to DB so next load is instant
+      db.from('listings').update({lat, lng}).eq('id', item.id).then(()=>{});
+    } else {
+      geocodeCache.set('fail:'+item.id, true);
+    }
+  } catch(e){ geocodeCache.set('fail:'+item.id, true); }
+}
+
+async function geocodeMissingListings(){
+  const missing = DATA.filter(d => !d.lat || !d.lng);
+  if(missing.length === 0) return;
+  for(const item of missing){
+    await geocodeItem(item);
+    // Nominatim requires max 1 request/second — we wait 1.1s between calls
+    await new Promise(r=>setTimeout(r, 1100));
+  }
+  // Refresh map pins after geocoding completes
+  if(mode === 'map') renderMap();
+}
+
 /* ---------------- data loading ---------------- */
 async function loadListings(){
-  const { data, error } = await db.from('listings').select('*').eq('available', true).order('id', { ascending:false });
+  const { data, error } = await db.from('listings').select('*').eq('available', true).order('id', {ascending:false});
   if(error){ console.error(error); DATA = []; return; }
   const colors = ['#1C6B5A','#B8862E','#3E7CB1','#A8553E','#6A5A9C','#5A7A4A'];
   DATA = (data||[]).map((d,i)=>({...d, color: colors[i % colors.length]}));
@@ -1276,6 +1333,8 @@ async function init(){
   el('loadingOverlay').classList.add('hidden');
   renderChips();
   renderHome();
+  // Geocode listings missing coordinates in the background — doesn't block the UI
+  geocodeMissingListings();
 }
 init();
 </script>
