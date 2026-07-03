@@ -387,6 +387,23 @@ const SITE_CONTACT = {
   email:'info@places4lease.com',
   address:'Monrovia, Liberia'
 };
+// ── Email via Cloudflare Worker + Resend ──────────────────────────────
+// After deploying the Worker, paste its URL here (looks like
+// https://p4l-mailer.YOURNAME.workers.dev). Leave blank to skip emails
+// silently — the site works fine without it; you just won't get alerts.
+const WORKER_URL = 'https://p4l-mailer.tp-harris.workers.dev';
+const ADMIN_EMAIL = 'info@places4lease.com';
+
+async function sendEmail(to, toName, subject, html){
+  if(!WORKER_URL || WORKER_URL.includes('PASTE')) return; // not yet configured
+  try {
+    await fetch(WORKER_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({to, toName, subject, html})
+    });
+  } catch(e){ console.warn('Email send failed (non-critical):', e.message); }
+}
 const DISCLAIMER_HTML = `
   <p><strong>Places4Lease.com is completely free.</strong> We do not charge any fee to list a property or to browse listings on this site.</p>
   <p>Places4Lease.com is not a party to any transaction between users. We do not verify the identity, ownership, or accuracy of every listing, and we take no responsibility for any agreement, payment, or dispute between a landlord and a renter. You are responsible for verifying who you are dealing with before making any payment or commitment.</p>
@@ -651,6 +668,16 @@ async function submitReport(){
   const contact = el('reportContact').value.trim() || null;
   const { error } = await db.from('reports').insert({ category:reportCat, message:msg, contact });
   if(error){ showToast('Could not submit — please check your connection and try again'); return; }
+  // Alert admin by email — fire and forget, doesn't block the user
+  sendEmail(
+    ADMIN_EMAIL, 'Places4Lease Admin',
+    `[${reportCat}] New report received`,
+    `<h2 style="color:#B8862E;">New ${reportCat} report — Places4Lease</h2>
+     <p><strong>Category:</strong> ${reportCat}</p>
+     <p><strong>Message:</strong><br>${msg.replace(/\n/g,'<br>')}</p>
+     ${contact ? `<p><strong>Contact:</strong> ${contact}</p>` : '<p><em>No contact provided.</em></p>'}
+     <p style="color:#7A7167;font-size:12px;">Log in to Supabase or the admin portal to review and act on this report.</p>`
+  );
   closeModal('reportModal');
   showToast('Thank you — our team will review this within 24 hours.');
 }
@@ -878,6 +905,15 @@ async function createSeekerAccount(){
   await loadSavedListings();
   renderProfile();
   showToast('🎉 Seeker account created — your saved listings will now be remembered');
+  // Welcome email to the new seeker
+  sendEmail(
+    email, name,
+    'Welcome to Places4Lease!',
+    `<h2 style="color:#B8862E;">Welcome to Places4Lease, ${name}!</h2>
+     <p>Your seeker account is set up. You can now save listings, set alerts for new properties, and browse rentals across Liberia — all in one place.</p>
+     <p><a href="https://places4lease.com" style="background:#B8862E;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;">Browse listings →</a></p>
+     <p style="color:#7A7167;font-size:12px;">Places4Lease is completely free. We never charge you to browse or contact a landlord.</p>`
+  );
 }
 async function loadSavedListings(){
   if(!seekerAccount){ return; }
@@ -1044,6 +1080,29 @@ async function createAccount(){
   landlordAccount = data;
   closeModal('regModal');
   showToast('🎉 Account created! Now add your first listing.');
+  // Welcome email to the new landlord
+  sendEmail(
+    regData.email, regData.name,
+    'Welcome to Places4Lease — your landlord account is ready',
+    `<h2 style="color:#B8862E;">Welcome, ${regData.name}!</h2>
+     <p>Your landlord account on Places4Lease is confirmed. You can now list your properties for free and connect directly with renters across Liberia.</p>
+     <p><strong>Your registered WhatsApp:</strong> ${regData.whatsapp}<br>
+        <strong>Renters will contact you at this number</strong> — make sure WhatsApp is active on it.</p>
+     <p><a href="https://places4lease.com" style="background:#B8862E;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;">Post your first listing →</a></p>
+     <p style="color:#7A7167;font-size:12px;">Places4Lease is completely free to list on. If you have any questions, contact us at ${SITE_CONTACT.email} or call ${SITE_CONTACT.phone1}.</p>`
+  );
+  // Notify admin of new landlord registration
+  sendEmail(
+    ADMIN_EMAIL, 'Places4Lease Admin',
+    `New landlord registered: ${regData.name}`,
+    `<h2 style="color:#B8862E;">New landlord registration</h2>
+     <p><strong>Name:</strong> ${regData.name}</p>
+     <p><strong>County:</strong> ${regData.county}</p>
+     <p><strong>WhatsApp:</strong> ${regData.whatsapp}</p>
+     <p><strong>Email:</strong> ${regData.email}</p>
+     <p><strong>WhatsApp confirmation:</strong> ${regData.waConfirmed === 'sent' ? '📨 Message sent (pending review)' : '—'}</p>
+     <p style="color:#7A7167;font-size:12px;">Log in to the admin portal to review and verify this landlord.</p>`
+  );
   openListingFlow();
 }
 
@@ -1264,6 +1323,19 @@ async function publishListing(){
   await loadListings();
   renderHome();
   showToast('🎉 Listing published!');
+  // Confirmation email to the landlord
+  if(landlordAccount && landlordAccount.email){
+    sendEmail(
+      landlordAccount.email, landlordAccount.name,
+      'Your listing is live on Places4Lease',
+      `<h2 style="color:#B8862E;">Your listing is live!</h2>
+       <p>Your <strong>${listingData.rentalType}</strong> in <strong>${listingData.community}, ${listingData.county} County</strong> is now visible to renters across Liberia.</p>
+       <p><strong>Price:</strong> $${listingData.price}/month</p>
+       <p>Renters will contact you directly on WhatsApp at <strong>${landlordAccount.whatsapp}</strong>. Make sure that number is active.</p>
+       <p><a href="https://places4lease.com" style="background:#B8862E;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;">View your listing →</a></p>
+       <p style="color:#7A7167;font-size:12px;">You can mark your property as unavailable any time from your dashboard. Questions? Contact us at ${SITE_CONTACT.email}.</p>`
+    );
+  }
 }
 
 /* ---------------- geocoding (Nominatim / OpenStreetMap — free, no key needed) ---------------- */
