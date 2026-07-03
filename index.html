@@ -229,9 +229,9 @@ a{text-decoration:none;color:inherit;}
   <div class="offline-banner hidden" id="offlineBanner">📴 Offline — showing saved listings</div>
 
   <header class="topbar">
-    <div class="brand">🏠 <span>Places<b>4</b>Lease</span></div>
+    <div class="brand" onclick="showView('home')" style="cursor:pointer;" title="Go to home page">🏠 <span>Places<b>4</b>Lease</span></div>
     <div style="display:flex;align-items:center;gap:4px;">
-      <button class="icon-btn" onclick="openReportModal()" title="Report a concern">📢</button>
+      <button onclick="openReportModal()" style="display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:10px;font-size:13px;font-weight:700;border:1px solid var(--border);background:var(--surface);cursor:pointer;" title="Report a scam or concern">📢 <span>Report</span></button>
       <button class="icon-btn" onclick="toggleSearch()">🔍</button>
       <nav class="desktop-nav">
         <button onclick="showView('saved')">🔑 Saved</button>
@@ -376,9 +376,15 @@ const PHOTO_SLOTS = [
   {key:'back', label:'Outside — back of building'},
   {key:'front', label:'Entire building — front', main:true}
 ];
-const PLATFORM_WHATSAPP_RAW = '231770000001';
-const PLATFORM_WHATSAPP_DISPLAY = '+231 77 000 0001';
-const SITE_CONTACT = {phone:'+231 77 000 0000', phoneRaw:'+231770000000', email:'info@places4lease.com', address:'Tubman Boulevard, Sinkor, Monrovia, Liberia'};
+const PLATFORM_WHATSAPP_RAW = '231770172954';
+const PLATFORM_WHATSAPP_DISPLAY = '+231 77 017 2954';
+const SITE_CONTACT = {
+  phone1:'+231 77 017 2954', phone1Raw:'+231770172954',
+  phone2:'+231 880 636 141', phone2Raw:'+231880636141',
+  whatsappRaw:'231770172954',
+  email:'info@places4lease.com',
+  address:'Monrovia, Liberia'
+};
 const DISCLAIMER_HTML = `
   <p><strong>Places4Lease.com is completely free.</strong> We do not charge any fee to list a property or to browse listings on this site.</p>
   <p>Places4Lease.com is not a party to any transaction between users. We do not verify the identity, ownership, or accuracy of every listing, and we take no responsibility for any agreement, payment, or dispute between a landlord and a renter. You are responsible for verifying who you are dealing with before making any payment or commitment.</p>
@@ -457,7 +463,7 @@ function renderChips(){
     `<button class="chip ${t===activeType?'active':''}" onclick="setType('${t}')">${t}</button>`
   ).join('');
 }
-function setType(t){activeType=t;renderChips();renderHome();}
+
 function onSearch(v){searchTerm=v.toLowerCase();renderHome();}
 function onPriceFilter(){
   const minV = el('minPriceInput').value, maxV = el('maxPriceInput').value;
@@ -507,7 +513,7 @@ function cardHTML(item){
     <div class="card-body" onclick="openDetail(${item.id})">
       <div class="card-title">${listingTitle(item)}${badgesHTML(item)}</div>
       <div class="card-loc">📍 ${item.community}, ${item.county} County</div>
-      <div class="card-price">$${item.price} <span>/ ${item.payment_frequency}</span></div>
+      <div class="card-price">$${item.price}<span>/month</span> <span style="font-size:11px;background:var(--paper);border:1px solid var(--border);border-radius:5px;padding:2px 6px;margin-left:4px;">Paid ${item.payment_frequency}</span></div>
     </div>
   </div>`;
 }
@@ -553,9 +559,19 @@ function showView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   el('view-'+v).classList.add('active');
   document.querySelectorAll('.nav-item[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
+  if(v==='home') renderHome();       // always re-render so active filters are reflected
   if(v==='saved') renderSaved();
   if(v==='dashboard') renderDashboard();
   if(v==='profile') renderProfile();
+}
+function setType(t){
+  activeType=t;
+  renderChips();
+  // Switch to home view and re-render with the new filter applied
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  el('view-home').classList.add('active');
+  document.querySelectorAll('.nav-item[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view==='home'));
+  renderHome();
 }
 function showToast(msg){
   const t = el('toast'); t.textContent = msg; t.classList.remove('hidden');
@@ -594,27 +610,57 @@ async function submitReport(){
 }
 
 /* ---------------- detail ---------------- */
+let detailPhotos = [];
+let detailPhotoIdx = 0;
+function detailNavPhoto(dir){
+  detailPhotoIdx = (detailPhotoIdx + dir + detailPhotos.length) % detailPhotos.length;
+  const frame = el('detailPhotoFrame');
+  const iconSpan = frame ? frame.dataset.icon : '';
+  if(frame) frame.innerHTML = detailPhotos[detailPhotoIdx]
+    ? `<img src="${detailPhotos[detailPhotoIdx]}" style="width:100%;height:100%;object-fit:cover;">`
+    : `<svg style="width:78px;height:78px;color:#fff;"><use href="#${iconSpan}"/></svg>`;
+  document.querySelectorAll('.detail-dot').forEach((d,i)=>d.classList.toggle('on', i===detailPhotoIdx));
+  const counter = el('photoCounter');
+  if(counter) counter.textContent = (detailPhotoIdx+1)+' of '+detailPhotos.length+' photos';
+}
 async function openDetail(id){
   const item = DATA.find(d=>d.id===id) || myListings.find(d=>d.id===id);
   if(!item) return;
-  db.rpc('increment_listing_views', { listing_id: id }); // fire and forget
+  db.rpc('increment_listing_views', { listing_id: id });
   const isSaved = saved.has(id);
   const amenityHTML = (item.amenities||[]).map(a=>`<span class="amenity-pill">${AMENITIES[a]||a}</span>`).join('') || '<span class="amenity-pill">None listed</span>';
   const waText = "Hi, I saw your "+item.rental_type+" listing in "+item.community+" on Places4Lease and I am interested.";
   const gps = item.lat ? ` · GPS ${Number(item.lat).toFixed(3)}, ${Number(item.lng).toFixed(3)}` : '';
+  const iconId = iconFor(item);
+  // Build the photo array for the gallery
+  detailPhotos = [];
+  if(item.main_photo_url) detailPhotos.push(item.main_photo_url);
+  // Additional photo slots show as icon placeholders until full photo storage is activated
+  const totalSlots = Math.max(item.photo_count||0, detailPhotos.length, 1);
+  while(detailPhotos.length < totalSlots) detailPhotos.push(null);
+  detailPhotoIdx = 0;
+  const hasNav = detailPhotos.length > 1;
+  const firstSlot = detailPhotos[0]
+    ? `<img src="${detailPhotos[0]}" style="width:100%;height:100%;object-fit:cover;">`
+    : `<svg style="width:78px;height:78px;color:#fff;"><use href="#${iconId}"/></svg>`;
+  const dotsRow = detailPhotos.map((_,i)=>`<span class="dot detail-dot ${i===0?'on':''}" onclick="detailNavPhoto(${i-0})" style="cursor:pointer;width:10px;height:10px;"></span>`).join('');
   el('detailSheet').innerHTML = `
     <button class="modal-close" onclick="closeModal('detailModal')">✕</button>
     <div class="detail-photo" style="background:linear-gradient(135deg,${item.color||'#1C6B5A'},${item.color||'#1C6B5A'}cc);">
-      ${photoOrIcon(item,'detail-icon')}
+      <div id="detailPhotoFrame" data-icon="${iconId}" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">${firstSlot}</div>
+      ${hasNav?`<button onclick="detailNavPhoto(-1)" style="position:absolute;left:8px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;width:34px;height:34px;border-radius:50%;font-size:20px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;">‹</button>
+      <button onclick="detailNavPhoto(1)" style="position:absolute;right:44px;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);color:#fff;width:34px;height:34px;border-radius:50%;font-size:20px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;">›</button>`:''}
       <button id="detailSaveIcon" data-id="${item.id}" class="key-save ${isSaved?'saved':''}" style="position:absolute;top:10px;right:10px;" onclick="toggleSave(${item.id})">🔑</button>
     </div>
-    <div>
+    <div class="dots" style="margin:8px 0 2px;">${dotsRow}</div>
+    ${hasNav?`<div id="photoCounter" class="field-hint" style="text-align:center;margin-top:0;">1 of ${detailPhotos.length} photos — tap arrows or dots to browse</div>`:''}
+    <div style="margin-top:8px;">
       <span class="detail-plate">${item.rooms} Room${item.rooms>1?'s':''} · ${item.restrooms} Restroom${item.restrooms>1?'s':''}</span>
       <span class="detail-type">${item.rental_type}</span>${badgesHTML(item)}
     </div>
     <div class="detail-title">${listingTitle(item)}</div>
     <div class="detail-loc">📍 ${item.community}, ${item.district}, ${item.county} County${gps}</div>
-    <div class="detail-price">$${item.price} <span style="font-size:13px;font-weight:600;color:var(--muted);">/ ${item.payment_frequency}</span></div>
+    <div class="detail-price">$${item.price}<span style="font-size:13px;font-weight:600;color:var(--muted);">/month</span> <span style="font-size:12px;font-weight:700;background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:3px 9px;color:var(--muted);">Paid ${item.payment_frequency}</span></div>
     <div class="amenity-row">${amenityHTML}</div>
     <div class="cta-row">
       <a class="btn btn-whatsapp" target="_blank" href="https://wa.me/${item.owner_contact}?text=${encodeURIComponent(waText)}">💬 Chat on WhatsApp</a>
@@ -754,7 +800,8 @@ function renderProfile(){
     <h2 class="section-title">Profile</h2>
     <div class="profile-card">
       <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">📍 Contact Places4Lease</h3>
-      <div class="profile-row"><span>Phone</span><span><a href="tel:${SITE_CONTACT.phoneRaw}">${SITE_CONTACT.phone}</a></span></div>
+      <div class="profile-row"><span>Phone 1</span><span><a href="tel:${SITE_CONTACT.phone1Raw}">${SITE_CONTACT.phone1}</a> <a href="https://wa.me/${SITE_CONTACT.whatsappRaw}" target="_blank" style="font-size:11px;background:#E4F4EA;color:#1F8A4C;border-radius:6px;padding:2px 7px;font-weight:700;margin-left:4px;">💬 WhatsApp</a></span></div>
+      <div class="profile-row"><span>Phone 2</span><span><a href="tel:${SITE_CONTACT.phone2Raw}">${SITE_CONTACT.phone2}</a></span></div>
       <div class="profile-row"><span>Email</span><span><a href="mailto:${SITE_CONTACT.email}">${SITE_CONTACT.email}</a></span></div>
       <div class="profile-row" style="border-bottom:none;"><span>Address</span><span>${SITE_CONTACT.address}</span></div>
     </div>
@@ -825,7 +872,7 @@ function openRegistration(){
   el('regModal').classList.remove('hidden');
 }
 function contactFooter(){
-  return `<div class="field-hint" style="text-align:center;margin-top:14px;">Need help? 📞 ${SITE_CONTACT.phone} · 📧 ${SITE_CONTACT.email}</div>`;
+  return `<div class="field-hint" style="text-align:center;margin-top:14px;">Need help? 📞 <a href="tel:${SITE_CONTACT.phone1Raw}">${SITE_CONTACT.phone1}</a> · <a href="tel:${SITE_CONTACT.phone2Raw}">${SITE_CONTACT.phone2}</a> · 📧 <a href="mailto:${SITE_CONTACT.email}">${SITE_CONTACT.email}</a></div>`;
 }
 function verifyBoxHTML(){
   const has = regData.whatsapp && regData.whatsapp.trim().length>0;
@@ -836,8 +883,8 @@ function verifyBoxHTML(){
     return `<button class="btn btn-ghost" style="border:1.5px solid var(--border);width:100%;" onclick="showToast('Please enter your WhatsApp number above first')">💬 Send WhatsApp message to confirm</button>
             <div class="field-hint">Enter your WhatsApp number above to enable this.</div>`;
   }
-  return `<p style="font-size:13px;color:var(--muted);margin:0 0 10px;">Tap below to open WhatsApp and send a one-tap message to our verification number <strong style="color:var(--ink);">${PLATFORM_WHATSAPP_DISPLAY}</strong>. Sending it proves the number is yours — free, takes a few seconds.</p>
-          <a class="btn btn-whatsapp" href="https://wa.me/${PLATFORM_WHATSAPP_RAW}?text=${encodeURIComponent('Hi Places4Lease, my name is '+(regData.name||'')+' and I am confirming my number to register as a landlord.')}" target="_blank" onclick="markWaSent()">💬 Send WhatsApp message to confirm</a>`;
+  return `<p style="font-size:13px;color:var(--muted);margin:0 0 10px;"><strong style="color:var(--ink);">Required to continue.</strong> Tap below to open WhatsApp and send a one-tap message to our number <strong style="color:var(--ink);">${PLATFORM_WHATSAPP_DISPLAY}</strong>. This confirms the number belongs to you — free, takes a few seconds, and you only do it once.</p>
+          <a class="btn btn-whatsapp" href="https://wa.me/${PLATFORM_WHATSAPP_RAW}?text=${encodeURIComponent('Hi Places4Lease, my name is '+(regData.name||'')+' and I am confirming my number to register as a landlord.')}" target="_blank" onclick="markWaSent()">💬 Tap to send WhatsApp confirmation</a>`;
 }
 function updateVerifyBox(){
   const box = el('verifyBoxContainer');
@@ -851,6 +898,11 @@ function onWaInput(v){
   regData.whatsapp = v;
   updateVerifyBox();
 }
+function saveRegStep1Fields(){
+  const n=el('rName'); if(n) regData.name=n.value;
+  const c=el('rCountry'); if(c) regData.country=c.value;
+  const co=el('rCounty'); if(co) regData.county=co.value;
+}
 function renderRegStep(){
   const total = 4;
   let body = '';
@@ -860,13 +912,13 @@ function renderRegStep(){
       <input class="field-input" id="rName" value="${regData.name}" placeholder="e.g. Esther Johnson">
       <div class="field-label">Sex</div>
       <div class="opt-row">
-        <button class="opt-btn ${regData.sex==='Male'?'active':''}" onclick="regData.sex='Male';renderRegStep();">Male</button>
-        <button class="opt-btn ${regData.sex==='Female'?'active':''}" onclick="regData.sex='Female';renderRegStep();">Female</button>
+        <button class="opt-btn ${regData.sex==='Male'?'active':''}" onclick="saveRegStep1Fields();regData.sex='Male';renderRegStep();">Male</button>
+        <button class="opt-btn ${regData.sex==='Female'?'active':''}" onclick="saveRegStep1Fields();regData.sex='Female';renderRegStep();">Female</button>
       </div>
       <div class="field-label">Country</div>
       <input class="field-input" id="rCountry" value="${regData.country}">
       <div class="field-label">County of residence</div>
-      <select class="field-input" id="rCounty">
+      <select class="field-input" id="rCounty" onchange="saveRegStep1Fields()">
         <option value="">Select a county</option>
         ${COUNTIES.map(c=>`<option value="${c}" ${regData.county===c?'selected':''}>${c}</option>`).join('')}
       </select>`;
@@ -919,6 +971,7 @@ function changeRegStep(dir){
       regData.email = el('rEmail').value.trim();
       regData.marketingOptIn = el('rMarketing').checked;
       if(!regData.whatsapp || !regData.momo || !regData.email){ showToast('Please fill in your WhatsApp number, mobile money number and email'); return; }
+      if(regData.waConfirmed !== 'sent'){ showToast('Please tap the WhatsApp button to send your confirmation message before continuing'); return; }
     }
     if(regStep===3){
       if(!el('rAgree').checked){ showToast('Please check the box to agree before continuing'); return; }
@@ -952,7 +1005,19 @@ function openListingFlow(){
   renderListingStep();
   el('listingModal').classList.remove('hidden');
 }
+function saveCurrentStepFields(){
+  // Snapshot whatever the user has typed so a re-render doesn't blank the form
+  if(listingStep===1){
+    const c=el('lCounty'); if(c) listingData.county=c.value;
+    const d=el('lDistrict'); if(d) listingData.district=d.value.trim();
+    const co=el('lCommunity'); if(co) listingData.community=co.value.trim();
+    const oc=el('lOwnerContact'); if(oc) listingData.ownerContact=oc.value.trim().replace(/\D/g,'');
+  } else if(listingStep===3){
+    const p=el('lPrice'); if(p) listingData.price=p.value.trim();
+  }
+}
 function useMyLocation(){
+  saveCurrentStepFields();   // capture typed values BEFORE the async callback fires
   showToast('Getting your location…');
   const fallback = ()=>{
     listingData.lat = 6.3156 + (Math.random()-0.5)*0.4;
@@ -1092,11 +1157,29 @@ function changeListingStep(dir){
   listingStep += dir;
   renderListingStep();
 }
+async function uploadPhoto(file, folder){
+  if(!file) return null;
+  try {
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `${folder}/${currentUserId}-${Date.now()}.${ext}`;
+    const { error } = await db.storage.from('listing-photos').upload(path, file, { upsert: true });
+    if(error){ console.error('Photo upload error:', error.message); return null; }
+    const { data } = db.storage.from('listing-photos').getPublicUrl(path);
+    return data.publicUrl;
+  } catch(e){ console.error('Photo upload exception:', e); return null; }
+}
 async function publishListing(){
   if(offlineMode){
     closeModal('listingModal');
     showToast('📴 Saved on your phone — will publish once you reconnect');
     return;
+  }
+  showToast('Publishing…');
+  // Upload main (front-of-building) photo if provided
+  let mainPhotoUrl = null;
+  if(listingData.photoSlots.front){
+    mainPhotoUrl = await uploadPhoto(listingData.photoSlots.front, 'main');
+    if(!mainPhotoUrl) showToast('Photo could not be uploaded — listing will publish without it');
   }
   const { data, error } = await db.from('listings').insert({
     landlord_id: currentUserId,
@@ -1106,7 +1189,8 @@ async function publishListing(){
     rooms: listingData.rooms, restrooms: listingData.restrooms,
     price: Number(listingData.price)||0, payment_frequency: listingData.freq,
     amenities: listingData.amenities, available: listingData.available,
-    lat: listingData.lat, lng: listingData.lng
+    lat: listingData.lat, lng: listingData.lng,
+    main_photo_url: mainPhotoUrl
   }).select().single();
   if(error){
     showToast('Could not publish — please check your connection and try again');
