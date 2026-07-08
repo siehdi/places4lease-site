@@ -389,7 +389,7 @@ const SITE_CONTACT = {
   phone2:'+231 880 636 141', phone2Raw:'+231880636141',
   whatsappRaw:'231770172954',
   email:'info@places4lease.com',
-  address:'Monrovia, Liberia'
+  address:'12th St and Coleman Ave, (b/w Levi C. Williams & Revelation SDA School), Sinkor, Monrovia, Liberia'
 };
 // ── Email via Cloudflare Worker + Resend ──────────────────────────────
 // After deploying the Worker, paste its URL here (looks like
@@ -588,7 +588,7 @@ function cardHTML(item){
     <div class="card-body" onclick="openDetail(${item.id})">
       <div class="card-title">${listingTitle(item)}${badgesHTML(item)}</div>
       <div class="card-loc">📍 ${item.community}, ${item.county} County</div>
-      <div class="card-price">$${item.price}<span>/month</span> <span style="font-size:11px;background:var(--paper);border:1px solid var(--border);border-radius:5px;padding:2px 6px;margin-left:4px;">Paid ${item.payment_frequency}</span></div>
+      <div class="card-price">$${item.price}<span>/month</span> <span style="font-size:11px;background:var(--paper);border:1px solid var(--border);border-radius:5px;padding:2px 6px;margin-left:4px;">Required payment: ${item.payment_frequency}</span></div>
     </div>
   </div>`;
 }
@@ -608,10 +608,19 @@ async function toggleSave(id){
     } else {
       await db.from('saved_listings').delete().eq('seeker_id', seekerAccount.id).eq('listing_id', id);
     }
+    if(nowSaving) saved.add(id); else saved.delete(id);
+    renderHome(); renderSaved();
+    showToast(nowSaving ? '🔑 Saved' : 'Removed from saved');
+  } else {
+    // No seeker account active — saving here is temporary (this browser
+    // tab only) and will be lost on logout, device change, or refresh.
+    // Being upfront about that rather than pretending it's persisted.
+    if(nowSaving) saved.add(id); else saved.delete(id);
+    renderHome(); renderSaved();
+    showToast(nowSaving
+      ? '🔑 Saved for now — create a free seeker account in Profile so this isn\'t lost when you log out or switch devices'
+      : 'Removed from saved', 4500);
   }
-  if(nowSaving) saved.add(id); else saved.delete(id);
-  renderHome(); renderSaved();
-  showToast(nowSaving ? '🔑 Saved' : 'Removed from saved');
   const icon = document.getElementById('detailSaveIcon');
   if(icon && Number(icon.dataset.id)===id) icon.classList.toggle('saved', saved.has(id));
 }
@@ -626,7 +635,7 @@ async function showView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   el('view-'+v).classList.add('active');
   document.querySelectorAll('.nav-item[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
-  if(v==='home') renderHome();       // always re-render so active filters are reflected
+  if(v==='home'){ setMode('list'); renderHome(); } // always return to the default list view, never stuck on a leftover map/list state
   if(v==='saved') renderSaved();
   if(v==='dashboard') await renderDashboard();
   if(v==='profile') renderProfile();
@@ -640,9 +649,9 @@ function setType(t){
   document.querySelectorAll('.nav-item[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view==='home'));
   renderHome();
 }
-function showToast(msg){
+function showToast(msg, duration=2600){
   const t = el('toast'); t.textContent = msg; t.classList.remove('hidden');
-  clearTimeout(t._timer); t._timer = setTimeout(()=>t.classList.add('hidden'), 2600);
+  clearTimeout(t._timer); t._timer = setTimeout(()=>t.classList.add('hidden'), duration);
 }
 function closeModal(id){ el(id).classList.add('hidden'); }
 function openSafety(){ el('disclaimerText').innerHTML = DISCLAIMER_HTML; el('safetyModal').classList.remove('hidden'); }
@@ -740,7 +749,7 @@ async function openDetail(id){
     </div>
     <div class="detail-title">${listingTitle(item)}</div>
     <div class="detail-loc">📍 ${item.community}, ${item.district}, ${item.county} County${gps}</div>
-    <div class="detail-price">$${item.price}<span style="font-size:13px;font-weight:600;color:var(--muted);">/month</span> <span style="font-size:12px;font-weight:700;background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:3px 9px;color:var(--muted);">Paid ${item.payment_frequency}</span></div>
+    <div class="detail-price">$${item.price}<span style="font-size:13px;font-weight:600;color:var(--muted);">/month</span> <span style="font-size:12px;font-weight:700;background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:3px 9px;color:var(--muted);">Required payment: ${item.payment_frequency}</span></div>
     <div class="amenity-row">${amenityHTML}</div>
     <div class="cta-row">
       <a class="btn btn-whatsapp" target="_blank" href="https://wa.me/${item.owner_contact}?text=${encodeURIComponent(waText)}">💬 Chat on WhatsApp</a>
@@ -858,16 +867,17 @@ function renderProfile(){
     </div>` : `
     <div class="profile-card">
       <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">🏠 Landlord account</h3>
-      <p class="field-hint" style="margin-top:0;">You do not have a landlord account yet. You only need this if you want to post a property. Registering now lets you log back in from any device with your email and password.</p>
-      <button class="btn btn-brass" style="display:inline-block;padding:11px 20px;" onclick="openRegistration()">➕ Create landlord account</button>
-      <br><button class="link-btn" style="margin-top:10px;" onclick="toggleLoginBox('landlord')">Already have an account? Log in</button>
-      <div id="landlordLoginBox" class="hidden" style="margin-top:12px;">
+      <button class="link-btn" style="font-size:13.5px;" onclick="toggleLoginBox('landlord')">🔑 Already have an account? Log in here</button>
+      <div id="landlordLoginBox" class="hidden" style="margin-top:10px;margin-bottom:14px;">
         <div class="field-label">Email address</div>
         <input class="field-input" id="llLoginEmail" type="email" placeholder="you@example.com">
         <div class="field-label">Password</div>
         <input class="field-input" id="llLoginPass" type="password" placeholder="Your password">
         <button class="btn btn-brass" style="display:block;width:100%;margin-top:10px;" onclick="loginLandlord()">Log in</button>
       </div>
+      <div style="border-top:1px solid var(--border);margin:14px 0;"></div>
+      <p class="field-hint" style="margin-top:0;">You do not have a landlord account yet. You only need this if you want to post a property. Registering now lets you log back in from any device with your email and password.</p>
+      <button class="btn btn-brass" style="display:inline-block;padding:11px 20px;" onclick="openRegistration()">➕ Create landlord account</button>
     </div>`;
   const seekerHTML = landlordAccount ? '' : (seekerAccount ? `
     <div class="profile-card">
@@ -878,13 +888,22 @@ function renderProfile(){
       <div class="profile-row"><span>Email</span><span>${seekerAccount.email||'—'}</span></div>
       <div class="profile-row" style="border-bottom:none;"><span>Saved listings</span><span>${saved.size} saved</span></div>
       <div class="toggle-row" style="padding:10px 0;">
-        <span style="font-size:13px;font-weight:600;">🔔 Notify me about new listings</span>
+        <span style="font-size:13px;font-weight:600;">🔔 Notify me by email about new listings</span>
         <button class="switch ${seekerAccount.alerts_enabled?'on':''}" onclick="toggleSeekerAlerts()"></button>
       </div>
       <a class="safety-link" href="#" style="color:#A33;" onclick="doFullLogout('seeker');return false;">🚪 Log out of seeker account</a>
     </div>` : `
     <div class="profile-card">
       <h3 style="font-size:15px;font-weight:800;margin-bottom:8px;">🔎 Seeker account</h3>
+      <button class="link-btn" style="font-size:13.5px;" onclick="toggleLoginBox('seeker')">🔑 Already have an account? Log in here</button>
+      <div id="seekerLoginBox" class="hidden" style="margin-top:10px;margin-bottom:14px;">
+        <div class="field-label">Email address</div>
+        <input class="field-input" id="skLoginEmail" type="email" placeholder="you@example.com">
+        <div class="field-label">Password</div>
+        <input class="field-input" id="skLoginPass" type="password" placeholder="Your password">
+        <button class="btn btn-brass" style="display:block;width:100%;margin-top:10px;" onclick="loginSeeker()">Log in</button>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:14px 0;"></div>
       <p class="field-hint" style="margin-top:0;">Optional — you can browse and save listings without an account. Creating one keeps your saved listings and alerts across visits, and lets you log back in on any device.</p>
       <div class="field-label">Name</div>
       <input class="field-input" id="skName" placeholder="Your name">
@@ -904,14 +923,6 @@ function renderProfile(){
         <label for="skMarketing">📧 I would like to receive updates and marketing communication from Places4Lease.</label>
       </div>
       <button class="btn btn-brass" style="display:block;margin-top:14px;width:100%;" onclick="createSeekerAccount()">Create free seeker account</button>
-      <br><button class="link-btn" style="margin-top:10px;" onclick="toggleLoginBox('seeker')">Already have an account? Log in</button>
-      <div id="seekerLoginBox" class="hidden" style="margin-top:12px;">
-        <div class="field-label">Email address</div>
-        <input class="field-input" id="skLoginEmail" type="email" placeholder="you@example.com">
-        <div class="field-label">Password</div>
-        <input class="field-input" id="skLoginPass" type="password" placeholder="Your password">
-        <button class="btn btn-brass" style="display:block;width:100%;margin-top:10px;" onclick="loginSeeker()">Log in</button>
-      </div>
     </div>`);
   el('view-profile').innerHTML = `
     <h2 class="section-title">Profile</h2>
@@ -1247,18 +1258,22 @@ function saveCurrentStepFields(){
 function useMyLocation(){
   saveCurrentStepFields();   // capture typed values BEFORE the async callback fires
   showToast('Getting your location…');
-  const fallback = ()=>{
-    listingData.lat = 6.3156 + (Math.random()-0.5)*0.4;
-    listingData.lng = -10.8074 + (Math.random()-0.5)*0.4;
-    renderListingStep();
-  };
-  if(navigator.geolocation){
-    navigator.geolocation.getCurrentPosition(
-      pos=>{ listingData.lat=pos.coords.latitude; listingData.lng=pos.coords.longitude; renderListingStep(); },
-      ()=>fallback(),
-      {timeout:4000}
-    );
-  } else fallback();
+  if(!navigator.geolocation){
+    showToast('⚠️ Your browser does not support location. The listing will publish without a map pin.');
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      listingData.lat = pos.coords.latitude;
+      listingData.lng = pos.coords.longitude;
+      renderListingStep();
+      showToast('📍 Location captured');
+    },
+    (err)=>{
+      showToast('⚠️ Could not get your exact location ('+(err.message||'try again outdoors or check location permission')+'). The listing will publish without a map pin rather than a guessed one.');
+    },
+    {timeout:8000, enableHighAccuracy:true}
+  );
 }
 function renderListingStep(){
   const total = 6;
@@ -1501,7 +1516,7 @@ async function publishListing(){
   await loadListings();
   if(wasEditing) await loadMyListings();
   await showView(wasEditing ? 'dashboard' : 'home');
-  showToast(wasEditing ? '✅ Listing updated!' : '🎉 Listing published!');
+  showToast(wasEditing ? '✅ Listing updated successfully!' : '🎉 Listing published successfully!', 4500);
   // Confirmation email to the landlord
   if(landlordAccount && landlordAccount.email){
     sendEmail(
@@ -1515,6 +1530,28 @@ async function publishListing(){
        <p style="color:#7A7167;font-size:12px;">You can mark your property as unavailable any time from your dashboard. Questions? Contact us at ${SITE_CONTACT.email}.</p>`
     );
   }
+  // Alert seekers who opted into new-listing notifications — only for
+  // genuinely new listings, not edits, so landlords tweaking a listing
+  // doesn't repeatedly spam everyone who subscribed.
+  if(!wasEditing) notifySubscribedSeekers(listingData);
+}
+async function notifySubscribedSeekers(listing){
+  try {
+    const { data: subscribers, error } = await db.rpc('get_subscribed_seeker_emails');
+    if(error || !subscribers) return;
+    for(const s of subscribers){
+      if(!s.email) continue;
+      sendEmail(
+        s.email, s.name,
+        `New listing in ${listing.community}, ${listing.county} County`,
+        `<h2 style="color:#B8862E;">A new property was just listed!</h2>
+         <p><strong>${listing.rentalType}</strong> in <strong>${listing.community}, ${listing.county} County</strong></p>
+         <p><strong>Price:</strong> $${listing.price}/month</p>
+         <p><a href="https://places4lease.com" style="background:#B8862E;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;font-weight:700;">View on Places4Lease →</a></p>
+         <p style="color:#7A7167;font-size:12px;">You're receiving this because you turned on "Notify me about new listings" in your Places4Lease profile. You can turn this off anytime from Profile.</p>`
+      );
+    }
+  } catch(e){ console.warn('Seeker alert dispatch failed (non-critical):', e); }
 }
 
 /* ---------------- data loading ---------------- */
