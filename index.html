@@ -1664,7 +1664,7 @@ function getBannerCandidates(context){
   // for businesses and boosted landlords alike.
   return context==='home' ? all : all.filter(c=>c.tier==='premium');
 }
-const TIER_WEIGHT = { premium: 2, standard: 1 };
+const TIER_WEIGHT = { premium: 2.5, standard: 1 };
 function pickWeighted(candidates){
   const totalWeight = candidates.reduce((sum,c)=>sum+(TIER_WEIGHT[c.tier]||1), 0);
   let roll = Math.random() * totalWeight;
