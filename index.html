@@ -326,6 +326,7 @@ a{text-decoration:none;color:inherit;}
       <button class="modal-close" onclick="closeModal('reportModal')">✕</button>
       <h2 style="margin-bottom:4px;">Report a concern</h2>
       <p class="field-hint" style="margin-top:0;">Scams, complaints, or suggestions — anyone can use this, no account needed.</p>
+      <div id="reportListingContext"></div>
       <div class="field-label">What is this about?</div>
       <div class="opt-row">
         <button class="opt-btn" id="catScam" onclick="setReportCat('Scam')">🚩 Scam</button>
@@ -681,9 +682,15 @@ function showToast(msg, duration=2600){
 function closeModal(id){ el(id).classList.add('hidden'); }
 function openSafety(){ el('disclaimerText').innerHTML = DISCLAIMER_HTML; el('safetyModal').classList.remove('hidden'); }
 
-async function reportListing(id){
-  await db.from('reports').insert({ category:'Complaint', message:'Visitor flagged listing #'+id+' for review.', contact:null, listing_id:id });
-  showToast("Thank you — our team will review this listing.");
+let reportingListingId = null;
+function reportListing(id, communityLabel){
+  reportingListingId = id;
+  reportCat = '';
+  el('reportMsg').value=''; el('reportContact').value='';
+  ['catScam','catComplaint','catRec','catOther'].forEach(cid=>el(cid).classList.remove('active'));
+  el('reportListingContext').innerHTML = `<div class="verify-box" style="margin-bottom:12px;">🏠 Reporting listing: <strong>${communityLabel||('#'+id)}</strong></div>`;
+  setReportCat('Scam'); // most listing flags are scam-related, so default to it — still changeable
+  el('reportModal').classList.remove('hidden');
 }
 
 /* ---------------- site-wide report ---------------- */
@@ -695,8 +702,10 @@ function setReportCat(c){
   el(map[c]).classList.add('active');
 }
 function openReportModal(){
+  reportingListingId = null;
   reportCat = '';
   el('reportMsg').value=''; el('reportContact').value='';
+  el('reportListingContext').innerHTML = '';
   ['catScam','catComplaint','catRec','catOther'].forEach(id=>el(id).classList.remove('active'));
   el('reportModal').classList.remove('hidden');
 }
@@ -704,19 +713,21 @@ async function submitReport(){
   const msg = el('reportMsg').value.trim();
   if(!reportCat || !msg){ showToast('Please choose a category and describe the issue'); return; }
   const contact = el('reportContact').value.trim() || null;
-  const { error } = await db.from('reports').insert({ category:reportCat, message:msg, contact });
+  const { error } = await db.from('reports').insert({ category:reportCat, message:msg, contact, listing_id:reportingListingId });
   if(error){ showToast('Could not submit — please check your connection and try again'); return; }
   // Alert admin by email — fire and forget, doesn't block the user
   sendEmail(
     ADMIN_EMAIL, 'Places4Lease Admin',
-    `[${reportCat}] New report received`,
+    `[${reportCat}] New report received${reportingListingId?' — Listing #'+reportingListingId:''}`,
     `<h2 style="color:#B8862E;">New ${reportCat} report — Places4Lease</h2>
      <p><strong>Category:</strong> ${reportCat}</p>
+     ${reportingListingId?`<p><strong>Listing:</strong> #${reportingListingId}</p>`:''}
      <p><strong>Message:</strong><br>${msg.replace(/\n/g,'<br>')}</p>
      ${contact ? `<p><strong>Contact:</strong> ${contact}</p>` : '<p><em>No contact provided.</em></p>'}
      <p style="color:#7A7167;font-size:12px;">Log in to Supabase or the admin portal to review and act on this report.</p>`
   );
   closeModal('reportModal');
+  reportingListingId = null;
   showToast('Thank you — our team will review this within 24 hours.');
 }
 
@@ -782,7 +793,7 @@ async function openDetail(id){
     </div>
     <div id="sponsorBannerDetail" style="margin-top:14px;"></div>
     <div class="field-hint" style="text-align:center;margin-top:10px;">⚠️ Always verify a property in person before paying anyone. <a class="safety-link" href="#" onclick="openSafety();return false;">Read our safety notice</a></div>
-    <div style="text-align:center;margin-top:6px;"><a class="safety-link" href="#" style="color:#A33;" onclick="reportListing(${item.id});return false;">🚩 Report this listing</a></div>`;
+    <div style="text-align:center;margin-top:6px;"><a class="safety-link" href="#" style="color:#A33;" onclick="reportListing(${item.id},'${listingTitle(item).replace(/'/g,"\\'")}');return false;">🚩 Report this listing</a></div>`;
   el('detailModal').classList.remove('hidden');
   renderSponsorBanner('detail');
 }
@@ -816,20 +827,18 @@ function renderDashboardHTML(){
         <span>Property still available?</span>
         <button class="switch ${item.available?'on':''}" id="availSwitch_${item.id}" onclick="toggleAvailable(${item.id})"></button>
       </div>
+      <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">
+        <div class="field-hint" style="margin:0 0 6px;">🚀 Grow this listing — admin-activated after payment, never automatic:</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          ${!item.premium?`<button class="slot-btn" onclick="requestListingUpgrade(${item.id},'${listingTitle(item).replace(/'/g,"\\'")}','Premium placement')">⭐ Request Premium</button>`:''}
+          ${!item.verified?`<button class="slot-btn" onclick="requestListingUpgrade(${item.id},'${listingTitle(item).replace(/'/g,"\\'")}','In-person verification visit')">✅ Request verification</button>`:''}
+          ${!item.banner_boost_tier?`<button class="slot-btn" onclick="requestListingUpgrade(${item.id},'${listingTitle(item).replace(/'/g,"\\'")}','Banner boost (ad rotation)')">📢 Request banner boost</button>`:''}
+        </div>
+      </div>
     </div>`).join('') : `<div class="empty-state"><div class="big">📋</div>You have not posted a listing yet.</div>`;
-  const growCard = landlordAccount ? `
-    <div class="profile-card">
-      <h3 style="font-size:15px;font-weight:800;margin-bottom:4px;">🚀 Grow your reach</h3>
-      <p class="field-hint" style="margin-top:0;">These are admin-activated — we turn them on after payment or an in-person visit, never automatically.</p>
-      <button class="btn btn-brass" style="display:block;width:100%;" onclick="requestPremium()">⭐ Request Premium placement</button>
-      <div class="field-hint">We activate this on your account once payment is confirmed.</div>
-      <button class="btn btn-brass" style="display:block;width:100%;margin-top:14px;" onclick="requestVerification()">✅ Request an in-person verification visit</button>
-      <div class="field-hint">Our team visits you, checks documentation, and applies the green Verified badge.</div>
-    </div>` : '';
   el('dashGrid').innerHTML = `
     <button class="btn btn-brass" style="display:block;width:100%;margin-bottom:16px;" onclick="handlePostTap()">➕ Add another property</button>
-    ${list}
-    ${growCard}`;
+    ${list}`;
 }
 async function confirmDeleteListing(id){
   if(!confirm('Delete this listing? This cannot be undone.')) return;
@@ -866,11 +875,21 @@ async function toggleAvailable(id){
   await loadListings(); renderHome();
   showToast(item.available ? 'Listing is active and visible again' : 'Listing hidden from public view');
 }
-function requestPremium(){
-  showToast("Request sent — our team will contact you on WhatsApp once payment is confirmed.");
-}
-function requestVerification(){
-  showToast("Request sent — our team will reach out on WhatsApp to schedule your visit.");
+async function requestListingUpgrade(listingId, listingLabel, upgradeType){
+  const contact = landlordAccount ? landlordAccount.whatsapp : null;
+  const message = `Landlord requested: ${upgradeType} — for listing "${listingLabel}" (#${listingId}) — from ${landlordAccount?landlordAccount.name:'Unknown'} (${contact||'no contact on file'})`;
+  const { error } = await db.from('reports').insert({ category:'Recommendation', message, contact, listing_id:listingId });
+  if(error){ showToast('Could not send request — please check your connection and try again'); console.error(error); return; }
+  sendEmail(
+    ADMIN_EMAIL, 'Places4Lease Admin',
+    `Landlord request: ${upgradeType} — ${listingLabel}`,
+    `<h2 style="color:#B8862E;">Landlord requested: ${upgradeType}</h2>
+     <p><strong>Listing:</strong> ${listingLabel} (#${listingId})</p>
+     <p><strong>Landlord:</strong> ${landlordAccount?landlordAccount.name:'Unknown'}</p>
+     <p><strong>WhatsApp:</strong> ${contact||'Not on file'}</p>
+     <p style="color:#7A7167;font-size:12px;">This request appears in the admin portal's Reports section, linked directly to the listing.</p>`
+  );
+  showToast(`Request sent — our team will contact you on WhatsApp about ${upgradeType.toLowerCase()}.`);
 }
 
 /* ---------------- profile ---------------- */
