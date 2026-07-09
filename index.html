@@ -232,7 +232,7 @@ a{text-decoration:none;color:inherit;}
 
 <div id="app">
   <header class="topbar">
-    <div class="brand" onclick="showView('home')" style="cursor:pointer;" title="Go to home page">🏠 <span>Places<b>4</b>Lease</span></div>
+    <div class="brand" onclick="goHome()" style="cursor:pointer;" title="Go to home page">🏠 <span>Places<b>4</b>Lease</span></div>
     <div style="display:flex;align-items:center;gap:4px;">
       <button onclick="openReportModal()" style="display:flex;align-items:center;gap:5px;padding:7px 11px;border-radius:10px;font-size:13px;font-weight:700;border:1px solid var(--border);background:var(--surface);cursor:pointer;" title="Report a scam or concern">📢 <span>Report</span></button>
       <button class="icon-btn" onclick="toggleSearch()">🔍</button>
@@ -286,7 +286,7 @@ a{text-decoration:none;color:inherit;}
   <main id="view-profile" class="view"></main>
 
   <nav class="bottom-nav">
-    <button class="nav-item active" data-view="home" onclick="showView('home')">🏠<span>Home</span></button>
+    <button class="nav-item active" data-view="home" onclick="goHome()">🏠<span>Home</span></button>
     <button class="nav-item" data-view="saved" onclick="showView('saved')">🔑<span>Saved</span></button>
     <button class="nav-item nav-post" onclick="handlePostTap()">➕</button>
     <button class="nav-item" data-view="dashboard" onclick="showView('dashboard')">📋<span>Listings</span></button>
@@ -493,6 +493,18 @@ function resetFilters(){
   el('searchInput').value=''; el('minPriceInput').value=''; el('maxPriceInput').value=''; el('sortSelect').value='newest';
   renderChips(); renderHome();
   showToast('Search criteria reset');
+}
+async function goHome(){
+  // A genuine "go all the way home": clears any active type filter,
+  // search, price range, and sort, in addition to switching back to
+  // the default List view — so clicking the logo/Home always returns
+  // to the exact same canonical starting state, not just the Home
+  // section while silently leaving old filters applied.
+  searchTerm=''; minPrice=null; maxPrice=null; activeType='All'; sortMode='newest';
+  const si=el('searchInput'), mi=el('minPriceInput'), xi=el('maxPriceInput'), so=el('sortSelect');
+  if(si) si.value=''; if(mi) mi.value=''; if(xi) xi.value=''; if(so) so.value='newest';
+  renderChips();
+  await showView('home');
 }
 function toggleSearch(){el('searchRow').classList.toggle('hidden');}
 let leafletMap = null;
