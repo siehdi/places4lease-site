@@ -450,6 +450,18 @@ let listingData = {};
 let editingListingId = null;
 
 function el(id){return document.getElementById(id);}
+function escapeHtml(str){
+  if(str==null) return '';
+  return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+}
+function safeUrl(url){
+  // Only allow normal web links, WhatsApp links, and phone links — never
+  // javascript: or other schemes that could execute code when clicked.
+  if(!url) return '#';
+  const trimmed = String(url).trim();
+  if(/^(https?:\/\/|tel:|mailto:)/i.test(trimmed)) return trimmed;
+  return '#';
+}
 function listingTitle(item){ return `${item.rental_type} — ${item.community}`; }
 function iconFor(item){
   if(item.rental_type==='Office') return 'ic-office';
@@ -1690,13 +1702,13 @@ function renderSponsorBanner(context='home'){
     // Show it as a clean, appropriately-sized square thumbnail instead,
     // alongside real listing details, so it's always recognizable.
     const thumb = c.banner_image_url
-      ? `<img src="${c.banner_image_url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`
-      : c.icon_emoji;
+      ? `<img src="${safeUrl(c.banner_image_url)}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`
+      : escapeHtml(c.icon_emoji);
     inner = `<div class="sponsor-template" style="background:linear-gradient(135deg,${c.bg_color},${c.bg_color}cc);">
         <div class="sponsor-icon" style="overflow:hidden;padding:0;">${thumb}</div>
         <div>
-          <p class="sponsor-name">${c.name}</p>
-          ${c.tagline?`<p class="sponsor-tagline">${c.tagline}</p>`:''}
+          <p class="sponsor-name">${escapeHtml(c.name)}</p>
+          ${c.tagline?`<p class="sponsor-tagline">${escapeHtml(c.tagline)}</p>`:''}
         </div>
         <span class="sponsor-cta">View listing →</span>
       </div>`;
@@ -1704,22 +1716,22 @@ function renderSponsorBanner(context='home'){
     // Business sponsor — a purpose-made wide banner image (or the
     // structured template if none was supplied) works fine full-bleed.
     const sponsorIcon = c.logo_url
-      ? `<img src="${c.logo_url}" style="width:100%;height:100%;object-fit:contain;padding:6px;">`
-      : c.icon_emoji;
+      ? `<img src="${safeUrl(c.logo_url)}" style="width:100%;height:100%;object-fit:contain;padding:6px;">`
+      : escapeHtml(c.icon_emoji);
     inner = c.banner_image_url
-      ? `<img src="${c.banner_image_url}" alt="${c.name}">`
+      ? `<img src="${safeUrl(c.banner_image_url)}" alt="${escapeHtml(c.name)}">`
       : `<div class="sponsor-template" style="background:linear-gradient(135deg,${c.bg_color},${c.bg_color}cc);">
           <div class="sponsor-icon" style="overflow:hidden;${c.logo_url?'background:#fff;padding:0;':''}">${sponsorIcon}</div>
           <div>
-            <p class="sponsor-name">${c.name}</p>
-            ${c.tagline?`<p class="sponsor-tagline">${c.tagline}</p>`:''}
+            <p class="sponsor-name">${escapeHtml(c.name)}</p>
+            ${c.tagline?`<p class="sponsor-tagline">${escapeHtml(c.tagline)}</p>`:''}
           </div>
           <span class="sponsor-cta">Learn more →</span>
         </div>`;
   }
   if(c.kind==='sponsor'){
     el2.innerHTML = `
-      <a class="sponsor-banner ${isPremium?'premium-pulse':''}" href="${c.link_url}" target="_blank" rel="noopener" onclick="trackSponsorClick(${c.id})">
+      <a class="sponsor-banner ${isPremium?'premium-pulse':''}" href="${safeUrl(c.link_url)}" target="_blank" rel="noopener" onclick="trackSponsorClick(${c.id})">
         <span class="sponsor-tag ${isPremium?'premium':''}">${tagLabel}</span>
         ${inner}
       </a>`;
