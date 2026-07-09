@@ -55,9 +55,16 @@ a{text-decoration:none;color:inherit;}
 .section-title{font-size:20px;font-weight:800;margin:8px 0 14px;}
 .grid{display:grid;grid-template-columns:1fr;gap:14px;}
 .empty-state{text-align:center;padding:50px 20px;color:var(--muted);}
-.sponsor-banner{display:block;border-radius:14px;overflow:hidden;margin-bottom:14px;position:relative;border:1px solid var(--border);}
+.sponsor-banner{display:block;border-radius:14px;overflow:hidden;margin-bottom:14px;position:relative;border:1px solid var(--border);transition:transform .4s cubic-bezier(.34,1.56,.64,1),box-shadow .4s ease;}
 .sponsor-banner img{width:100%;display:block;max-height:120px;object-fit:cover;}
 .sponsor-tag{position:absolute;top:8px;left:8px;background:rgba(28,46,41,.75);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.03em;text-transform:uppercase;}
+.sponsor-tag.premium{background:rgba(90,61,5,.8);}
+.sponsor-template{height:90px;display:flex;align-items:center;gap:14px;padding:0 18px;}
+.sponsor-icon{width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 auto;}
+.sponsor-name{color:#fff;font-weight:800;font-size:15px;margin:0;}
+.sponsor-tagline{color:rgba(255,255,255,.82);font-size:12px;margin:2px 0 0;}
+@keyframes sponsorPulse{0%,100%{transform:scale(1);box-shadow:none;}50%{transform:scale(1.02);box-shadow:0 4px 16px rgba(184,134,46,.28);}}
+.sponsor-banner.premium-pulse{animation:sponsorPulse 3s ease-in-out infinite;}
 .empty-state .big{font-size:38px;margin-bottom:8px;}
 
 .card{background:var(--surface);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);position:relative;border:1px solid var(--border);}
@@ -279,6 +286,7 @@ a{text-decoration:none;color:inherit;}
 
   <main id="view-saved" class="view">
     <h2 class="section-title">Saved listings</h2>
+    <div id="sponsorBannerSaved"></div>
     <section id="savedGrid" class="grid"></section>
   </main>
 
@@ -645,6 +653,7 @@ function renderSaved(){
   const hint = !seekerAccount ? `<div class="field-hint" style="text-align:center;margin-bottom:12px;">Create a free seeker account in Profile to keep this list across visits.</div>` : '';
   el('savedGrid').innerHTML = hint + (list.length ? list.map(cardHTML).join('') :
     `<div class="empty-state"><div class="big">🔑</div>Nothing saved yet.<br>Tap the key icon on any listing.</div>`);
+  renderSponsorBanner('saved');
 }
 
 async function showView(v){
@@ -771,9 +780,11 @@ async function openDetail(id){
       <a class="btn btn-whatsapp" target="_blank" href="https://wa.me/${item.owner_contact}?text=${encodeURIComponent(waText)}">💬 Chat on WhatsApp</a>
       <a class="btn btn-outline" href="tel:+${item.owner_contact}">📞 Call</a>
     </div>
+    <div id="sponsorBannerDetail" style="margin-top:14px;"></div>
     <div class="field-hint" style="text-align:center;margin-top:10px;">⚠️ Always verify a property in person before paying anyone. <a class="safety-link" href="#" onclick="openSafety();return false;">Read our safety notice</a></div>
     <div style="text-align:center;margin-top:6px;"><a class="safety-link" href="#" style="color:#A33;" onclick="reportListing(${item.id});return false;">🚩 Report this listing</a></div>`;
   el('detailModal').classList.remove('hidden');
+  renderSponsorBanner('detail');
 }
 
 /* ---------------- dashboard ---------------- */
@@ -1593,23 +1604,40 @@ async function loadSponsors(){
   if(error){ console.error(error); SPONSORS = []; return; }
   SPONSORS = data || [];
 }
-function renderSponsorBanner(){
-  const el2 = el('sponsorBanner');
+function bannerSlotFor(context){
+  return { home:'sponsorBanner', saved:'sponsorBannerSaved', detail:'sponsorBannerDetail' }[context] || 'sponsorBanner';
+}
+function renderSponsorBanner(context='home'){
+  const slotId = bannerSlotFor(context);
+  const el2 = el(slotId);
   if(!el2) return;
-  if(SPONSORS.length === 0){ el2.innerHTML = ''; return; }
-  // Simple rotation: pick one at random each time the home page renders,
-  // so repeat visitors see different sponsors across visits rather than
-  // always the same one.
-  const s = SPONSORS[Math.floor(Math.random() * SPONSORS.length)];
+  // Home shows any active sponsor. Saved and individual listing pages
+  // are Premium-exclusive placements — a real, visible reason to upgrade.
+  const eligible = context==='home' ? SPONSORS : SPONSORS.filter(s=>s.tier==='premium');
+  if(eligible.length === 0){ el2.innerHTML = ''; return; }
+  const s = eligible[Math.floor(Math.random() * eligible.length)];
+  const isPremium = s.tier==='premium';
+  const inner = s.banner_image_url
+    ? `<img src="${s.banner_image_url}" alt="${s.business_name}">`
+    : `<div class="sponsor-template" style="background:linear-gradient(135deg,${s.bg_color||'#1C6B5A'},${s.bg_color||'#1C6B5A'}cc);">
+        <div class="sponsor-icon">${s.icon_emoji||'🏢'}</div>
+        <div>
+          <p class="sponsor-name">${s.business_name}</p>
+          ${s.tagline?`<p class="sponsor-tagline">${s.tagline}</p>`:''}
+        </div>
+      </div>`;
   el2.innerHTML = `
-    <a class="sponsor-banner" href="${s.link_url}" target="_blank" rel="noopener" onclick="trackSponsorClick(${s.id})">
-      <span class="sponsor-tag">Sponsored</span>
-      <img src="${s.banner_image_url}" alt="${s.business_name}">
+    <a class="sponsor-banner ${isPremium?'premium-pulse':''}" href="${s.link_url}" target="_blank" rel="noopener" onclick="trackSponsorClick(${s.id})">
+      <span class="sponsor-tag ${isPremium?'premium':''}">${isPremium?'Premium':'Sponsored'}</span>
+      ${inner}
     </a>`;
+  trackSponsorImpression(s.id);
 }
 function trackSponsorClick(id){
-  // Fire-and-forget click log — doesn't block navigation
   db.rpc('log_sponsor_click', { sponsor_id: id }).then(()=>{}).catch(()=>{});
+}
+function trackSponsorImpression(id){
+  db.rpc('log_sponsor_impression', { sponsor_id: id }).then(()=>{}).catch(()=>{});
 }
 
 /* ---------------- init ---------------- */
