@@ -749,7 +749,14 @@ function detailNavPhoto(dir){
 async function openDetail(id){
   const item = DATA.find(d=>d.id===id) || myListings.find(d=>d.id===id);
   if(!item) return;
-  db.rpc('increment_listing_views', { listing_id: id });
+  // Optimistically bump the visible count right away — the number was
+  // loaded before this click, so without this it would look "stuck"
+  // until the next full page reload even when the server-side
+  // increment succeeds correctly.
+  item.views = (item.views||0) + 1;
+  db.rpc('increment_listing_views', { listing_id: id }).then(({error})=>{
+    if(error) console.warn('View count did not save server-side:', error.message);
+  });
   const isSaved = saved.has(id);
   const amenityHTML = (item.amenities||[]).map(a=>`<span class="amenity-pill">${AMENITIES[a]||a}</span>`).join('') || '<span class="amenity-pill">None listed</span>';
   const waText = "Hi, I saw your "+item.rental_type+" listing in "+item.community+" on Places4Lease and I am interested.";
@@ -1729,16 +1736,16 @@ function renderSponsorBanner(context='home'){
   }
 }
 function trackSponsorClick(id){
-  db.rpc('log_sponsor_click', { sponsor_id: id }).then(()=>{}).catch(()=>{});
+  db.rpc('log_sponsor_click', { sponsor_id: id }).then(({error})=>{ if(error) console.warn('Sponsor click tracking failed:', error.message); });
 }
 function trackSponsorImpression(id){
-  db.rpc('log_sponsor_impression', { sponsor_id: id }).then(()=>{}).catch(()=>{});
+  db.rpc('log_sponsor_impression', { sponsor_id: id }).then(({error})=>{ if(error) console.warn('Sponsor impression tracking failed:', error.message); });
 }
 function trackListingBannerClick(id){
-  db.rpc('log_listing_banner_click', { listing_id: id }).then(()=>{}).catch(()=>{});
+  db.rpc('log_listing_banner_click', { listing_id: id }).then(({error})=>{ if(error) console.warn('Listing banner click tracking failed:', error.message); });
 }
 function trackListingBannerImpression(id){
-  db.rpc('log_listing_banner_impression', { listing_id: id }).then(()=>{}).catch(()=>{});
+  db.rpc('log_listing_banner_impression', { listing_id: id }).then(({error})=>{ if(error) console.warn('Listing banner impression tracking failed:', error.message); });
 }
 
 /* ---------------- init ---------------- */
