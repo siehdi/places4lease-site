@@ -59,10 +59,11 @@ a{text-decoration:none;color:inherit;}
 .sponsor-banner img{width:100%;display:block;max-height:120px;object-fit:cover;}
 .sponsor-tag{position:absolute;top:8px;left:8px;background:rgba(28,46,41,.75);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;letter-spacing:.03em;text-transform:uppercase;}
 .sponsor-tag.premium{background:rgba(90,61,5,.8);}
-.sponsor-template{height:90px;display:flex;align-items:center;gap:14px;padding:0 18px;}
-.sponsor-icon{width:44px;height:44px;border-radius:8px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:22px;flex:0 0 auto;}
-.sponsor-name{color:#fff;font-weight:800;font-size:15px;margin:0;}
-.sponsor-tagline{color:rgba(255,255,255,.82);font-size:12px;margin:2px 0 0;}
+.sponsor-template{height:100px;display:flex;align-items:center;gap:16px;padding:0 20px;}
+.sponsor-icon{width:72px;height:72px;border-radius:10px;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:32px;flex:0 0 auto;overflow:hidden;}
+.sponsor-name{color:#fff;font-weight:800;font-size:16px;margin:0;}
+.sponsor-tagline{color:rgba(255,255,255,.85);font-size:12.5px;margin:3px 0 0;}
+.sponsor-cta{margin-left:auto;color:#fff;font-weight:700;font-size:13px;white-space:nowrap;background:rgba(255,255,255,.16);padding:9px 18px;border-radius:999px;flex:0 0 auto;}
 @keyframes sponsorPulse{0%,100%{transform:scale(1);box-shadow:none;}50%{transform:scale(1.02);box-shadow:0 4px 16px rgba(184,134,46,.28);}}
 .sponsor-banner.premium-pulse{animation:sponsorPulse 3s ease-in-out infinite;}
 .empty-state .big{font-size:38px;margin-bottom:8px;}
@@ -1647,21 +1648,31 @@ function getBannerCandidates(context){
   // for businesses and boosted landlords alike.
   return context==='home' ? all : all.filter(c=>c.tier==='premium');
 }
+const TIER_WEIGHT = { premium: 3, standard: 1 };
+function pickWeighted(candidates){
+  const totalWeight = candidates.reduce((sum,c)=>sum+(TIER_WEIGHT[c.tier]||1), 0);
+  let roll = Math.random() * totalWeight;
+  for(const c of candidates){
+    roll -= (TIER_WEIGHT[c.tier]||1);
+    if(roll <= 0) return c;
+  }
+  return candidates[candidates.length-1]; // fallback for floating-point edge case
+}
 function renderSponsorBanner(context='home'){
   const slotId = bannerSlotFor(context);
   const el2 = el(slotId);
   if(!el2) return;
   const eligible = getBannerCandidates(context);
   if(eligible.length === 0){ el2.innerHTML = ''; return; }
-  const c = eligible[Math.floor(Math.random() * eligible.length)];
+  const c = pickWeighted(eligible);
   const isPremium = c.tier==='premium';
   const tagLabel = isPremium ? 'Premium' : (c.kind==='listing' ? 'Featured' : 'Sponsored');
   let inner;
   if(c.kind==='listing'){
     // Property photos are almost always portrait — forcing one to fill
     // a short wide banner just crops a tiny, blown-up sliver of it.
-    // Show it as a small clean thumbnail instead, alongside real
-    // listing details, so it's always recognizable and informative.
+    // Show it as a clean, appropriately-sized square thumbnail instead,
+    // alongside real listing details, so it's always recognizable.
     const thumb = c.banner_image_url
       ? `<img src="${c.banner_image_url}" style="width:100%;height:100%;object-fit:cover;border-radius:8px;">`
       : c.icon_emoji;
@@ -1671,6 +1682,7 @@ function renderSponsorBanner(context='home'){
           <p class="sponsor-name">${c.name}</p>
           ${c.tagline?`<p class="sponsor-tagline">${c.tagline}</p>`:''}
         </div>
+        <span class="sponsor-cta">View listing →</span>
       </div>`;
   } else {
     // Business sponsor — a purpose-made wide banner image (or the
@@ -1683,6 +1695,7 @@ function renderSponsorBanner(context='home'){
             <p class="sponsor-name">${c.name}</p>
             ${c.tagline?`<p class="sponsor-tagline">${c.tagline}</p>`:''}
           </div>
+          <span class="sponsor-cta">Learn more →</span>
         </div>`;
   }
   if(c.kind==='sponsor'){
