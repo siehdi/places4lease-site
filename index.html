@@ -828,6 +828,15 @@ function renderDashboardHTML(){
         <span>Property still available?</span>
         <button class="switch ${item.available?'on':''}" id="availSwitch_${item.id}" onclick="toggleAvailable(${item.id})"></button>
       </div>
+      ${item.banner_boost_tier ? `
+      <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;background:#FBF3E4;margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px;">
+        <div class="field-hint" style="margin:0 0 4px;color:var(--brass-dark);font-weight:700;">📢 ${item.banner_boost_tier==='premium'?'Premium':'Standard'} ad — ${item.banner_boost_paid_until?'active until '+item.banner_boost_paid_until:'active'}</div>
+        <div style="display:flex;gap:16px;font-size:13px;">
+          <span><strong>${item.banner_impressions||0}</strong> times shown</span>
+          <span><strong>${item.banner_clicks||0}</strong> clicks</span>
+          <span><strong>${item.banner_impressions?((item.banner_clicks||0)/item.banner_impressions*100).toFixed(1):'0'}%</strong> click rate</span>
+        </div>
+      </div>` : ''}
       <div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px;">
         <div class="field-hint" style="margin:0 0 6px;">🚀 Grow this listing — admin-activated after payment, never automatic:</div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
@@ -1631,7 +1640,7 @@ function getBannerCandidates(context){
   const today = new Date().toISOString().slice(0,10);
   const sponsorCandidates = SPONSORS.map(s=>({
     kind:'sponsor', id:s.id, tier:s.tier,
-    link_url:s.link_url, banner_image_url:s.banner_image_url,
+    link_url:s.link_url, banner_image_url:s.banner_image_url, logo_url:s.logo_url,
     icon_emoji:s.icon_emoji||'🏢', name:s.business_name, tagline:s.tagline, bg_color:s.bg_color||'#1C6B5A'
   }));
   const boostedListings = DATA.filter(d =>
@@ -1648,7 +1657,7 @@ function getBannerCandidates(context){
   // for businesses and boosted landlords alike.
   return context==='home' ? all : all.filter(c=>c.tier==='premium');
 }
-const TIER_WEIGHT = { premium: 3, standard: 1 };
+const TIER_WEIGHT = { premium: 2, standard: 1 };
 function pickWeighted(candidates){
   const totalWeight = candidates.reduce((sum,c)=>sum+(TIER_WEIGHT[c.tier]||1), 0);
   let roll = Math.random() * totalWeight;
@@ -1687,10 +1696,13 @@ function renderSponsorBanner(context='home'){
   } else {
     // Business sponsor — a purpose-made wide banner image (or the
     // structured template if none was supplied) works fine full-bleed.
+    const sponsorIcon = c.logo_url
+      ? `<img src="${c.logo_url}" style="width:100%;height:100%;object-fit:contain;padding:6px;">`
+      : c.icon_emoji;
     inner = c.banner_image_url
       ? `<img src="${c.banner_image_url}" alt="${c.name}">`
       : `<div class="sponsor-template" style="background:linear-gradient(135deg,${c.bg_color},${c.bg_color}cc);">
-          <div class="sponsor-icon">${c.icon_emoji}</div>
+          <div class="sponsor-icon" style="overflow:hidden;${c.logo_url?'background:#fff;padding:0;':''}">${sponsorIcon}</div>
           <div>
             <p class="sponsor-name">${c.name}</p>
             ${c.tagline?`<p class="sponsor-tagline">${c.tagline}</p>`:''}
