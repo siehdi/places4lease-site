@@ -1597,7 +1597,7 @@ async function loadSeekerAccount(){
   seekerAccount = data || null;
 }
 
-/* ---------------- sponsor banner ---------------- */
+/* ---------------- sponsor + boosted-listing banner ---------------- */
 let SPONSORS = [];
 async function loadSponsors(){
   const { data, error } = await db.from('sponsors').select('*');
@@ -1607,37 +1607,74 @@ async function loadSponsors(){
 function bannerSlotFor(context){
   return { home:'sponsorBanner', saved:'sponsorBannerSaved', detail:'sponsorBannerDetail' }[context] || 'sponsorBanner';
 }
+function getBannerCandidates(context){
+  const today = new Date().toISOString().slice(0,10);
+  const sponsorCandidates = SPONSORS.map(s=>({
+    kind:'sponsor', id:s.id, tier:s.tier,
+    link_url:s.link_url, banner_image_url:s.banner_image_url,
+    icon_emoji:s.icon_emoji||'🏢', name:s.business_name, tagline:s.tagline, bg_color:s.bg_color||'#1C6B5A'
+  }));
+  const boostedListings = DATA.filter(d =>
+    d.banner_boost_tier && d.available &&
+    (!d.banner_boost_paid_until || d.banner_boost_paid_until >= today)
+  ).map(d=>({
+    kind:'listing', id:d.id, tier:d.banner_boost_tier,
+    banner_image_url:d.main_photo_url, icon_emoji:'🏠',
+    name:`${d.rental_type} in ${d.community}`, tagline:`$${d.price}/month · ${d.county} County`, bg_color:d.color||'#1C6B5A'
+  }));
+  const all = [...sponsorCandidates, ...boostedListings];
+  // Home shows any tier. Saved and individual listing pages are
+  // Premium-exclusive placements — a real, visible reason to upgrade,
+  // for businesses and boosted landlords alike.
+  return context==='home' ? all : all.filter(c=>c.tier==='premium');
+}
 function renderSponsorBanner(context='home'){
   const slotId = bannerSlotFor(context);
   const el2 = el(slotId);
   if(!el2) return;
-  // Home shows any active sponsor. Saved and individual listing pages
-  // are Premium-exclusive placements — a real, visible reason to upgrade.
-  const eligible = context==='home' ? SPONSORS : SPONSORS.filter(s=>s.tier==='premium');
+  const eligible = getBannerCandidates(context);
   if(eligible.length === 0){ el2.innerHTML = ''; return; }
-  const s = eligible[Math.floor(Math.random() * eligible.length)];
-  const isPremium = s.tier==='premium';
-  const inner = s.banner_image_url
-    ? `<img src="${s.banner_image_url}" alt="${s.business_name}">`
-    : `<div class="sponsor-template" style="background:linear-gradient(135deg,${s.bg_color||'#1C6B5A'},${s.bg_color||'#1C6B5A'}cc);">
-        <div class="sponsor-icon">${s.icon_emoji||'🏢'}</div>
+  const c = eligible[Math.floor(Math.random() * eligible.length)];
+  const isPremium = c.tier==='premium';
+  const inner = c.banner_image_url
+    ? `<img src="${c.banner_image_url}" alt="${c.name}">`
+    : `<div class="sponsor-template" style="background:linear-gradient(135deg,${c.bg_color},${c.bg_color}cc);">
+        <div class="sponsor-icon">${c.icon_emoji}</div>
         <div>
-          <p class="sponsor-name">${s.business_name}</p>
-          ${s.tagline?`<p class="sponsor-tagline">${s.tagline}</p>`:''}
+          <p class="sponsor-name">${c.name}</p>
+          ${c.tagline?`<p class="sponsor-tagline">${c.tagline}</p>`:''}
         </div>
       </div>`;
-  el2.innerHTML = `
-    <a class="sponsor-banner ${isPremium?'premium-pulse':''}" href="${s.link_url}" target="_blank" rel="noopener" onclick="trackSponsorClick(${s.id})">
-      <span class="sponsor-tag ${isPremium?'premium':''}">${isPremium?'Premium':'Sponsored'}</span>
-      ${inner}
-    </a>`;
-  trackSponsorImpression(s.id);
+  const tagLabel = isPremium ? 'Premium' : (c.kind==='listing' ? 'Featured' : 'Sponsored');
+  if(c.kind==='sponsor'){
+    el2.innerHTML = `
+      <a class="sponsor-banner ${isPremium?'premium-pulse':''}" href="${c.link_url}" target="_blank" rel="noopener" onclick="trackSponsorClick(${c.id})">
+        <span class="sponsor-tag ${isPremium?'premium':''}">${tagLabel}</span>
+        ${inner}
+      </a>`;
+    trackSponsorImpression(c.id);
+  } else {
+    // Boosted listing — opens the detail modal in-page rather than
+    // navigating away, and is tracked through its own counters.
+    el2.innerHTML = `
+      <a class="sponsor-banner ${isPremium?'premium-pulse':''}" href="#" onclick="trackListingBannerClick(${c.id});openDetail(${c.id});return false;">
+        <span class="sponsor-tag ${isPremium?'premium':''}">${tagLabel}</span>
+        ${inner}
+      </a>`;
+    trackListingBannerImpression(c.id);
+  }
 }
 function trackSponsorClick(id){
   db.rpc('log_sponsor_click', { sponsor_id: id }).then(()=>{}).catch(()=>{});
 }
 function trackSponsorImpression(id){
   db.rpc('log_sponsor_impression', { sponsor_id: id }).then(()=>{}).catch(()=>{});
+}
+function trackListingBannerClick(id){
+  db.rpc('log_listing_banner_click', { listing_id: id }).then(()=>{}).catch(()=>{});
+}
+function trackListingBannerImpression(id){
+  db.rpc('log_listing_banner_impression', { listing_id: id }).then(()=>{}).catch(()=>{});
 }
 
 /* ---------------- init ---------------- */
