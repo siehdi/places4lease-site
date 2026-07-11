@@ -1126,14 +1126,13 @@ function contactFooter(){
 function verifyBoxHTML(){
   const has = regData.whatsapp && regData.whatsapp.trim().length>0;
   if(regData.waConfirmed==='sent'){
-    return `<div class="verify-ok" style="color:var(--brass-dark);">📨 Message sent — pending review. We typically confirm within a few hours.</div>`;
+    return `<div class="verify-ok" style="color:var(--brass-dark);">📨 Message sent — thank you!</div>`;
   }
   if(!has){
-    return `<button class="btn btn-ghost" style="border:1.5px solid var(--border);width:100%;" onclick="showToast('Please enter your WhatsApp number above first')">💬 Send WhatsApp message to confirm</button>
-            <div class="field-hint">Enter your WhatsApp number above to enable this.</div>`;
+    return `<div class="field-hint">Enter your WhatsApp number above, then you can optionally send us a quick confirmation message below.</div>`;
   }
-  return `<p style="font-size:13px;color:var(--muted);margin:0 0 10px;"><strong style="color:var(--ink);">Required to continue.</strong> Tap below to open WhatsApp and send a one-tap message to our number <strong style="color:var(--ink);">${PLATFORM_WHATSAPP_DISPLAY}</strong>. This confirms the number belongs to you — free, takes a few seconds, and you only do it once.</p>
-          <a class="btn btn-whatsapp" href="https://wa.me/${PLATFORM_WHATSAPP_RAW}?text=${encodeURIComponent('Hi Places4Lease, my name is '+(regData.name||'')+' and I am confirming my number to register as a landlord.')}" target="_blank" onclick="markWaSent()">💬 Tap to send WhatsApp confirmation</a>`;
+  return `<p style="font-size:13px;color:var(--muted);margin:0 0 10px;">Optional: tap below to say hello on WhatsApp at <strong style="color:var(--ink);">${PLATFORM_WHATSAPP_DISPLAY}</strong> — helps us reach you faster if we ever need to. Not required to continue.</p>
+          <a class="btn btn-whatsapp" href="https://wa.me/${PLATFORM_WHATSAPP_RAW}?text=${encodeURIComponent('Hi Places4Lease, my name is '+(regData.name||'')+' and I am registering as a landlord.')}" target="_blank" onclick="markWaSent()">💬 Say hello on WhatsApp (optional)</a>`;
 }
 function updateVerifyBox(){
   const box = el('verifyBoxContainer');
@@ -1221,7 +1220,6 @@ function changeRegStep(dir){
       regData.marketingOptIn = el('rMarketing').checked;
       if(!regData.whatsapp || !regData.email){ showToast('Please fill in your WhatsApp number and email'); return; }
       if(regData.password.length < 8){ showToast('Password must be at least 8 characters'); return; }
-      if(regData.waConfirmed !== 'sent'){ showToast('Please tap the WhatsApp button to send your confirmation message before continuing'); return; }
     }
     if(regStep===3){
       if(!el('rAgree').checked){ showToast('Please check the box to agree before continuing'); return; }
@@ -1573,11 +1571,11 @@ async function publishListing(){
     photo_urls: photoUrls
   };
 
-  let error;
+  let error, newRow;
   if(editingListingId){
     ({ error } = await db.from('listings').update(payload).eq('id', editingListingId));
   } else {
-    ({ error } = await db.from('listings').insert({ landlord_id: currentUserId, ...payload }).select().single());
+    ({ data: newRow, error } = await db.from('listings').insert({ landlord_id: currentUserId, ...payload }).select().single());
   }
 
   if(error){
@@ -1586,6 +1584,10 @@ async function publishListing(){
     return;
   }
   const wasEditing = !!editingListingId;
+  // Run duplicate/fraud-signal checks against existing listings BEFORE
+  // reloading DATA, while it still only holds listings other than this
+  // new one — only for genuinely new listings, not edits.
+  if(!wasEditing && newRow) checkForDuplicateSignals(newRow, DATA);
   editingListingId = null;
   closeModal('listingModal');
   await loadListings();
@@ -1609,6 +1611,50 @@ async function publishListing(){
   // genuinely new listings, not edits, so landlords tweaking a listing
   // doesn't repeatedly spam everyone who subscribed.
   if(!wasEditing) notifySubscribedSeekers(listingData);
+}
+/* ---------------- duplicate / fraud signal detection ---------------- */
+function metersBetween(lat1, lng1, lat2, lng2){
+  const R = 6371000;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLng = (lng2-lng1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+async function checkForDuplicateSignals(newListing, existingListings){
+  const signals = [];
+  for(const existing of existingListings){
+    if(existing.id === newListing.id) continue;
+    // Signal 1: same phone number, different address
+    if(existing.owner_contact === newListing.owner_contact && existing.community !== newListing.community){
+      signals.push({ type:'Same phone, different address', existingId:existing.id, existingLabel:`${existing.community}, ${existing.county}` });
+    }
+    // Signal 2: same GPS location (within ~75m), different phone number
+    if(newListing.lat && newListing.lng && existing.lat && existing.lng &&
+       metersBetween(newListing.lat, newListing.lng, existing.lat, existing.lng) <= 75 &&
+       existing.owner_contact !== newListing.owner_contact){
+      signals.push({ type:'Same GPS location, different phone number', existingId:existing.id, existingLabel:`${existing.community}, ${existing.county} (contact: ${existing.owner_contact})` });
+    }
+    // Signal 3: same photo reused, different phone number
+    const existingPhotos = [existing.main_photo_url, ...(existing.photo_urls||[])].filter(Boolean);
+    const newPhotos = [newListing.main_photo_url, ...(newListing.photo_urls||[])].filter(Boolean);
+    const sharedPhoto = existingPhotos.find(p => newPhotos.includes(p));
+    if(sharedPhoto && existing.owner_contact !== newListing.owner_contact){
+      signals.push({ type:'Same photo reused, different phone number', existingId:existing.id, existingLabel:`${existing.community}, ${existing.county} (contact: ${existing.owner_contact})` });
+    }
+  }
+  if(signals.length === 0) return;
+  // Don't block the landlord's publish — just alert the admin quietly,
+  // matching a reactive-review approach rather than punishing possibly
+  // legitimate landlords with a false positive.
+  sendEmail(
+    ADMIN_EMAIL, 'Places4Lease Admin',
+    `⚠️ Possible duplicate/fraud signal — new listing #${newListing.id}`,
+    `<h2 style="color:#A33;">⚠️ Duplicate or fraud signal detected</h2>
+     <p>A new listing was just published that matches an existing listing:</p>
+     <p><strong>New listing:</strong> #${newListing.id} — ${newListing.community}, ${newListing.county} (contact: ${newListing.owner_contact})</p>
+     <ul>${signals.map(s=>`<li><strong>${s.type}</strong> — matches listing #${s.existingId} (${s.existingLabel})</li>`).join('')}</ul>
+     <p style="color:#7A7167;font-size:12px;">This does not block the listing from publishing — it's a signal for you to review. Check both listings in the admin portal and delist if this turns out to be an unauthorized re-post.</p>`
+  );
 }
 async function notifySubscribedSeekers(listing){
   try {
