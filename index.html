@@ -370,21 +370,22 @@ const AMENITIES = {
   lec:'⚡ Electricity (LEC)', generator:'🔌 Alternative Electricity (Generator)',
   lwsc:'🚰 LWSC (piped borne water)', reservoir:'🛢️ Reservoir/Polytank',
   well:'🪣 Well/Hand Pump', lra:'🧾 LRA taxes payment up to date',
-  parking:'🚗 Parking lot for cars', security:'🔒 Security', fence:'🧱 In fence', fireAlarm:'🔥 Fire alarm available',
+  parking:'🚗 Parking lot for cars', security:'🔒 Security', fence:'🧱 In fence',
   singleApt:'🏢 Single apartment', singleHouse:'🏠 Single house', duplex:'🏘️ Duplex/multiplex',
   singleStoreStandalone:'🏪 Single store (stand-alone)', storeInBuilding:'🏬 Store attached to a building',
   multiOffice:'🏢 Multiple offices in a building', singleOfficeBuilding:'🏛️ Single office/single building',
   sharedWorkplace:'🧑‍🤝‍🧑 Shared workplaces',
   kitchen:'🍳 Kitchen', frontBackEntrance:'🚪 Front & back entrances',
+  gym:'🏋️ Gym', storeroom:'📦 Storeroom', fireAlarm:'🔥 Fire alarm', fireExtinguisher:'🧯 Fire extinguisher',
   petsAllowed:'🐾 Pets allowed', petsNotAllowed:'🚫🐾 Pets not allowed',
   singleNoChildren:'🧍 Single/couple, no children', familyWithChildren:'👨‍👩‍👧 Family with children allowed',
   familyNoChildrenAllowed:'🚫👨‍👩‍👧 Family with children not allowed', singleOccupantOnly:'👤 Single occupant only'
 };
 const AMENITY_GROUPS = [
   {title:'🔧 Utilities', keys:['lec','generator','lwsc','reservoir','well','lra']},
-  {title:'🅿️ Parking & safety', keys:['parking','security','fence','fireAlarm']},
+  {title:'🅿️ Parking & safety', keys:['parking','security','fence']},
   {title:'🏗️ Building type', keys:['singleApt','singleHouse','duplex','singleStoreStandalone','storeInBuilding','multiOffice','singleOfficeBuilding','sharedWorkplace']},
-  {title:'🚪 Features', keys:['kitchen','frontBackEntrance']},
+  {title:'🚪 Features', keys:['kitchen','frontBackEntrance','gym','storeroom','fireAlarm','fireExtinguisher']},
   {title:'👨‍👩‍👧 Occupancy preferences', keys:['petsAllowed','petsNotAllowed','singleNoChildren','familyWithChildren','familyNoChildrenAllowed','singleOccupantOnly']}
 ];
 const PHOTO_SLOTS = [
@@ -1116,35 +1117,12 @@ function handlePostTap(){
 }
 function openRegistration(){
   regStep = 1;
-  regData = {name:'',sex:'',country:'Liberia',county:'',whatsapp:'',email:'',marketingOptIn:false,waConfirmed:'pending'};
+  regData = {name:'',sex:'',country:'Liberia',county:'',whatsapp:'',email:'',marketingOptIn:false};
   renderRegStep();
   el('regModal').classList.remove('hidden');
 }
 function contactFooter(){
   return `<div class="field-hint" style="text-align:center;margin-top:14px;">Need help? 📞 <a href="tel:${SITE_CONTACT.phone1Raw}">${SITE_CONTACT.phone1}</a> · <a href="tel:${SITE_CONTACT.phone2Raw}">${SITE_CONTACT.phone2}</a> · 📧 <a href="mailto:${SITE_CONTACT.email}">${SITE_CONTACT.email}</a></div>`;
-}
-function verifyBoxHTML(){
-  const has = regData.whatsapp && regData.whatsapp.trim().length>0;
-  if(regData.waConfirmed==='sent'){
-    return `<div class="verify-ok" style="color:var(--brass-dark);">📨 Message sent — thank you!</div>`;
-  }
-  if(!has){
-    return `<div class="field-hint">Enter your WhatsApp number above, then you can optionally send us a quick confirmation message below.</div>`;
-  }
-  return `<p style="font-size:13px;color:var(--muted);margin:0 0 10px;">Optional: tap below to say hello on WhatsApp at <strong style="color:var(--ink);">${PLATFORM_WHATSAPP_DISPLAY}</strong> — helps us reach you faster if we ever need to. Not required to continue.</p>
-          <a class="btn btn-whatsapp" href="https://wa.me/${PLATFORM_WHATSAPP_RAW}?text=${encodeURIComponent('Hi Places4Lease, my name is '+(regData.name||'')+' and I am registering as a landlord.')}" target="_blank" onclick="markWaSent()">💬 Say hello on WhatsApp (optional)</a>`;
-}
-function updateVerifyBox(){
-  const box = el('verifyBoxContainer');
-  if(box) box.innerHTML = verifyBoxHTML();
-}
-function markWaSent(){
-  regData.waConfirmed = 'sent';
-  updateVerifyBox();
-}
-function onWaInput(v){
-  regData.whatsapp = v;
-  updateVerifyBox();
 }
 function saveRegStep1Fields(){
   const n=el('rName'); if(n) regData.name=n.value;
@@ -1156,12 +1134,13 @@ function renderRegStep(){
   let body = '';
   if(regStep===1){
     body = `
-      <div class="field-label">Name</div>
-      <input class="field-input" id="rName" value="${regData.name}" placeholder="e.g. Esther Johnson">
+      <div class="field-label">Name or Rental Business Name</div>
+      <input class="field-input" id="rName" value="${regData.name}" placeholder="e.g. Esther Johnson or ABC Properties">
       <div class="field-label">Sex</div>
-      <div class="opt-row">
+      <div class="opt-row three">
         <button class="opt-btn ${regData.sex==='Male'?'active':''}" onclick="saveRegStep1Fields();regData.sex='Male';renderRegStep();">Male</button>
         <button class="opt-btn ${regData.sex==='Female'?'active':''}" onclick="saveRegStep1Fields();regData.sex='Female';renderRegStep();">Female</button>
+        <button class="opt-btn ${regData.sex==='Not Applicable'?'active':''}" onclick="saveRegStep1Fields();regData.sex='Not Applicable';renderRegStep();">Not Applicable</button>
       </div>
       <div class="field-label">Country</div>
       <input class="field-input" id="rCountry" value="${regData.country}">
@@ -1173,13 +1152,12 @@ function renderRegStep(){
   } else if(regStep===2){
     body = `
       <div class="field-label">WhatsApp number</div>
-      <input class="field-input" id="rWa" value="${regData.whatsapp}" placeholder="+231 77 000 0000" oninput="onWaInput(this.value)">
+      <input class="field-input" id="rWa" value="${regData.whatsapp}" placeholder="+231 77 000 0000" oninput="regData.whatsapp=this.value">
       <div class="field-label">Email address</div>
       <input class="field-input" id="rEmail" type="email" value="${regData.email}" placeholder="you@example.com">
       <div class="field-label">Password</div>
       <input class="field-input" id="rPassword" type="password" value="${regData.password||''}" placeholder="Min 8 characters">
       <div class="field-hint">You'll use this email and password to log back in on any device — no need to register again.</div>
-      <div class="verify-box" id="verifyBoxContainer">${verifyBoxHTML()}</div>
       <div class="agree-row">
         <input type="checkbox" id="rMarketing" ${regData.marketingOptIn?'checked':''}>
         <label for="rMarketing">📧 I would like to receive updates and marketing communication from Places4Lease.</label>
@@ -1276,7 +1254,6 @@ async function createAccount(){
      <p><strong>County:</strong> ${regData.county}</p>
      <p><strong>WhatsApp:</strong> ${regData.whatsapp}</p>
      <p><strong>Email:</strong> ${regData.email}</p>
-     <p><strong>WhatsApp confirmation:</strong> ${regData.waConfirmed === 'sent' ? '📨 Message sent (pending review)' : '—'}</p>
      <p style="color:#7A7167;font-size:12px;">Log in to the admin portal to review and verify this landlord.</p>`
   );
   openListingFlow();
@@ -1286,7 +1263,7 @@ async function createAccount(){
 function openListingFlow(){
   listingStep = 1;
   editingListingId = null;
-  listingData = {county:'',district:'',community:'',ownerContact:(landlordAccount.whatsapp||'').replace(/\D/g,''),lat:null,lng:null,rentalType:'Residential',rooms:1,restrooms:1,sittingRooms:0,kitchens:0,officeSpaces:0,conferenceRooms:0,price:'',freq:'6 months',amenities:[],photoSlots:{},available:true};
+  listingData = {county:'',district:'',community:'',ownerContact:(landlordAccount.whatsapp||'').replace(/\D/g,''),lat:null,lng:null,rentalType:'Residential',rooms:0,restrooms:0,sittingRooms:0,kitchens:0,officeSpaces:0,conferenceRooms:0,price:'',freq:'6 months',amenities:[],photoSlots:{},available:true};
   renderListingStep();
   el('listingModal').classList.remove('hidden');
 }
@@ -1381,15 +1358,15 @@ function renderListingStep(){
     body = `
       <div class="counter-grid">
         <div class="counter-col">
-          <div class="field-label">Number of rooms</div>
+          <div class="field-label">Number of rooms / spaces</div>
           <div class="stepper">
-            <button onclick="listingData.rooms=Math.max(1,listingData.rooms-1);renderListingStep();">−</button>
+            <button onclick="listingData.rooms=Math.max(0,listingData.rooms-1);renderListingStep();">−</button>
             <span class="val">${listingData.rooms}</span>
             <button onclick="listingData.rooms++;renderListingStep();">+</button>
           </div>
           <div class="field-label">Number of restrooms</div>
           <div class="stepper">
-            <button onclick="listingData.restrooms=Math.max(1,listingData.restrooms-1);renderListingStep();">−</button>
+            <button onclick="listingData.restrooms=Math.max(0,listingData.restrooms-1);renderListingStep();">−</button>
             <span class="val">${listingData.restrooms}</span>
             <button onclick="listingData.restrooms++;renderListingStep();">+</button>
           </div>
@@ -1421,7 +1398,7 @@ function renderListingStep(){
           </div>
         </div>
       </div>
-      <div class="field-label" style="margin-top:16px;">Rental price (USD)</div>
+      <div class="field-label" style="margin-top:16px;">Rental Price (USD) per month</div>
       <input class="field-input" id="lPrice" type="number" value="${listingData.price}" placeholder="e.g. 350" oninput="listingData.price=this.value">
       <div class="field-label">Rental payment frequency</div>
       <div class="opt-row three">
@@ -1460,7 +1437,7 @@ function renderListingStep(){
       <div class="summary-row"><span>GPS</span><span>${listingData.lat?listingData.lat.toFixed(4)+', '+listingData.lng.toFixed(4):'Not captured'}</span></div>
       <div class="summary-row"><span>Owner contact</span><span>${listingData.ownerContact}</span></div>
       <div class="summary-row"><span>Rental type</span><span>${listingData.rentalType}</span></div>
-      <div class="summary-row"><span>Rooms / Restrooms</span><span>${listingData.rooms} / ${listingData.restrooms}</span></div>
+      <div class="summary-row"><span>Rooms/Spaces / Restrooms</span><span>${listingData.rooms} / ${listingData.restrooms}</span></div>
       <div class="summary-row"><span>Sitting rooms / Kitchens</span><span>${listingData.sittingRooms} / ${listingData.kitchens}</span></div>
       <div class="summary-row"><span>Office spaces / Conference rooms</span><span>${listingData.officeSpaces} / ${listingData.conferenceRooms}</span></div>
       <div class="summary-row"><span>Price</span><span>$${listingData.price||'0'} / ${listingData.freq}</span></div>
