@@ -473,6 +473,13 @@ function safeUrl(url){
   return '#';
 }
 function listingTitle(item){ return `${item.rental_type} — ${item.community}`; }
+function formatDistrict(d){
+  if(!d) return d;
+  const trimmed = String(d).trim();
+  // If it already mentions "district" in some form, don't add another label
+  if(/district/i.test(trimmed)) return trimmed;
+  return `District#: ${trimmed}`;
+}
 function iconFor(item){
   if(item.rental_type==='Office') return 'ic-office';
   if(item.rental_type==='Store/Shop') return 'ic-shop';
@@ -814,7 +821,7 @@ async function openDetail(id){
       <span class="detail-type">${item.rental_type}</span>${badgesHTML(item)}
     </div>
     <div class="detail-title">${listingTitle(item)}</div>
-    <div class="detail-loc">📍 ${item.community}, ${item.district}, ${item.county} County${gps}</div>
+    <div class="detail-loc">📍 ${item.community}, ${formatDistrict(item.district)}, ${item.county} County${gps}</div>
     <div class="detail-price">$${item.price}<span style="font-size:13px;font-weight:600;color:var(--muted);">/month</span> <span style="font-size:12px;font-weight:700;background:var(--paper);border:1px solid var(--border);border-radius:6px;padding:3px 9px;color:var(--muted);">Required payment: ${item.payment_frequency}</span></div>
     <div class="amenity-row">${amenityHTML}</div>
     <div class="cta-row">
@@ -1533,7 +1540,7 @@ function renderListingStep(){
     const a = listingData.amenities.map(k=>AMENITIES[k]).join(', ') || '—';
     const photoCount = Object.values(listingData.photoSlots).filter(Boolean).length;
     body = `
-      <div class="summary-row"><span>Location</span><span>${listingData.community}, ${listingData.district}, ${listingData.county} County</span></div>
+      <div class="summary-row"><span>Location</span><span>${listingData.community}, ${formatDistrict(listingData.district)}, ${listingData.county} County</span></div>
       <div class="summary-row"><span>GPS</span><span>${listingData.lat?listingData.lat.toFixed(4)+', '+listingData.lng.toFixed(4):'Not captured'}</span></div>
       <div class="summary-row"><span>Owner contact</span><span>${listingData.ownerContact}</span></div>
       <div class="summary-row"><span>Rental type</span><span>${listingData.rentalType}</span></div>
