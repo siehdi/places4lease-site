@@ -940,6 +940,28 @@ function renderProfile(){
       <div class="profile-row"><span>County of residence</span><span>${landlordAccount.county}</span></div>
       <div class="profile-row"><span>WhatsApp number</span><span>${landlordAccount.whatsapp} ${waBadge(landlordAccount.wa_status)}</span></div>
       <div class="profile-row" style="border-bottom:none;"><span>Email</span><span>${landlordAccount.email||'—'}</span></div>
+      <button class="link-btn" style="margin-top:10px;" onclick="toggleEditLandlordProfile()">✏️ Edit my account info</button>
+      <div id="editLandlordBox" class="hidden" style="margin-top:12px;">
+        <div class="field-label">Name or Rental Business Name</div>
+        <input class="field-input" id="elName" value="${landlordAccount.name}">
+        <div class="field-label">Sex</div>
+        <select class="field-input" id="elSex">
+          <option value="Male" ${landlordAccount.sex==='Male'?'selected':''}>Male</option>
+          <option value="Female" ${landlordAccount.sex==='Female'?'selected':''}>Female</option>
+          <option value="Not Applicable" ${landlordAccount.sex==='Not Applicable'?'selected':''}>Not Applicable</option>
+        </select>
+        <div class="field-label">Country</div>
+        <input class="field-input" id="elCountry" value="${landlordAccount.country}">
+        <div class="field-label">County of residence</div>
+        <select class="field-input" id="elCounty">
+          ${COUNTIES.map(c=>`<option value="${c}" ${landlordAccount.county===c?'selected':''}>${c}</option>`).join('')}
+        </select>
+        <div class="field-label">WhatsApp number</div>
+        <input class="field-input" id="elWa" value="${landlordAccount.whatsapp}">
+        <div class="field-label">Email address</div>
+        <input class="field-input" id="elEmail" type="email" value="${landlordAccount.email||''}">
+        <button class="btn btn-brass" style="width:100%;margin-top:10px;" onclick="saveLandlordProfileEdit()">Save changes</button>
+      </div>
       <a class="safety-link" href="#" style="color:#A33;" onclick="doFullLogout('landlord');return false;">🚪 Log out of landlord account</a>
     </div>` : `
     <div class="profile-card">
@@ -1063,6 +1085,65 @@ async function toggleSeekerAlerts(){
   const { error } = await db.from('seekers').update({ alerts_enabled: newVal }).eq('id', seekerAccount.id);
   if(error){ showToast('Could not update — please try again'); return; }
   seekerAccount.alerts_enabled = newVal;
+  renderProfile();
+}
+function toggleEditLandlordProfile(){
+  el('editLandlordBox').classList.toggle('hidden');
+}
+async function saveLandlordProfileEdit(){
+  const name = el('elName').value.trim();
+  const sex = el('elSex').value;
+  const country = el('elCountry').value.trim();
+  const county = el('elCounty').value;
+  const whatsapp = el('elWa').value.trim();
+  const email = el('elEmail').value.trim();
+  if(!name || !whatsapp || !email){ showToast('Please complete name, WhatsApp number and email'); return; }
+
+  const whatsappChanged = whatsapp !== landlordAccount.whatsapp;
+  const oldWhatsapp = landlordAccount.whatsapp;
+
+  const { data, error } = await db.from('landlords').update({
+    name, sex, country, county, whatsapp, email
+  }).eq('id', currentUserId).select().single();
+
+  if(error){
+    showToast('Could not save changes — please check your connection and try again');
+    console.error(error);
+    return;
+  }
+  landlordAccount = data;
+
+  // If the WhatsApp number changed, offer to update it on their existing
+  // listings too — otherwise a corrected number wouldn't actually reach
+  // seekers on properties already published with the old one.
+  if(whatsappChanged){
+    await loadMyListings();
+    if(myListings.length > 0){
+      const syncConfirmed = confirm(
+        `You updated your WhatsApp number. You have ${myListings.length} existing listing(s) still showing the old number (${oldWhatsapp}). Update ${myListings.length>1?'them':'it'} to the new number (${whatsapp}) too?`
+      );
+      if(syncConfirmed){
+        const { error: syncError } = await db.from('listings')
+          .update({ owner_contact: whatsapp.replace(/\D/g,'') })
+          .eq('landlord_id', currentUserId)
+          .eq('owner_contact', oldWhatsapp.replace(/\D/g,''));
+        if(syncError){
+          showToast('Profile saved, but could not update your listings — please edit them individually');
+          console.error(syncError);
+        } else {
+          await loadListings();
+          showToast('✅ Profile and listing contact number both updated');
+        }
+      } else {
+        showToast('✅ Profile updated (your existing listings still show the old number)');
+      }
+    } else {
+      showToast('✅ Profile updated');
+    }
+  } else {
+    showToast('✅ Profile updated');
+  }
+  el('editLandlordBox').classList.add('hidden');
   renderProfile();
 }
 async function doFullLogout(context){
@@ -1305,18 +1386,34 @@ function useMyLocation(){
     showToast('⚠️ Your browser does not support location. The listing will publish without a map pin.');
     return;
   }
-  navigator.geolocation.getCurrentPosition(
-    pos=>{
-      listingData.lat = pos.coords.latitude;
-      listingData.lng = pos.coords.longitude;
-      renderListingStep();
-      showToast('📍 Location captured');
-    },
-    (err)=>{
-      showToast('⚠️ Could not get your exact location ('+(err.message||'try again outdoors or check location permission')+'). The listing will publish without a map pin rather than a guessed one.');
-    },
-    {timeout:8000, enableHighAccuracy:true}
-  );
+  const onSuccess = pos=>{
+    listingData.lat = pos.coords.latitude;
+    listingData.lng = pos.coords.longitude;
+    renderListingStep();
+    showToast('📍 Location captured');
+  };
+  const onFirstError = (err)=>{
+    if(err.code === err.TIMEOUT){
+      // High-accuracy GPS can genuinely take longer than expected,
+      // especially indoors or on first use. Automatically retry once
+      // with a faster, lower-accuracy method (network/wifi-based)
+      // rather than failing outright — still far better than no pin.
+      showToast('Still trying — switching to a faster location method…');
+      navigator.geolocation.getCurrentPosition(onSuccess, onFinalError, {timeout:15000, enableHighAccuracy:false});
+      return;
+    }
+    onFinalError(err);
+  };
+  function onFinalError(err){
+    if(err.code === err.PERMISSION_DENIED){
+      showToast("⚠️ Location access is blocked for this site specifically in your browser — turning on your phone's general location setting is not enough. Check your browser's site settings (often the padlock icon next to the address bar) and allow location for this site, then try again. The listing will publish without a map pin for now.");
+    } else if(err.code === err.POSITION_UNAVAILABLE){
+      showToast('⚠️ Could not determine your position — try moving somewhere with a clearer view of the sky, or near a window. The listing will publish without a map pin rather than a guessed one.');
+    } else {
+      showToast('⚠️ Could not get your exact location. The listing will publish without a map pin rather than a guessed one.');
+    }
+  }
+  navigator.geolocation.getCurrentPosition(onSuccess, onFirstError, {timeout:12000, enableHighAccuracy:true});
 }
 function renderListingStep(){
   const total = 6;
@@ -1414,9 +1511,11 @@ function renderListingStep(){
           return `<div class="photo-slot" style="${s.main?'border-color:var(--brass);background:#FBF3E4;':''}">
             ${previewSrc ? `<img src="${previewSrc}">` : `<div class="ph-placeholder">📷</div>`}
             <div class="ph-label">${s.label}${s.main?`<br><span style="color:var(--brass-dark);font-weight:700;font-size:11px;">⭐ Main photo — required</span>`:'<br><span style="color:var(--muted);font-size:11px;">Optional</span>'}</div>
-            <input type="file" accept="image/*" id="slot_${s.key}" style="display:none" onchange="onSlotChosen('${s.key}',this)">
-            <div style="display:flex;gap:6px;justify-content:center;">
-              <button class="slot-btn" onclick="document.getElementById('slot_${s.key}').click()">${f?'Change':'Add photo'}</button>
+            <input type="file" accept="image/*" capture="environment" id="cam_${s.key}" style="display:none" onchange="onSlotChosen('${s.key}',this)">
+            <input type="file" accept="image/*" id="gal_${s.key}" style="display:none" onchange="onSlotChosen('${s.key}',this)">
+            <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;">
+              <button class="slot-btn" onclick="document.getElementById('cam_${s.key}').click()">📷 Camera</button>
+              <button class="slot-btn" onclick="document.getElementById('gal_${s.key}').click()">🖼️ Gallery</button>
               ${(f && !s.main) ? `<button class="slot-btn" style="color:var(--red);" onclick="removeSlotPhoto('${s.key}')">Remove</button>` : ''}
             </div>
           </div>`;
@@ -1490,6 +1589,22 @@ function changeListingStep(dir){
   renderListingStep();
 }
 /* ---------------- photo upload ---------------- */
+async function convertToJpegBlob(file){
+  try{
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(bitmap, 0, 0);
+    const blob = await new Promise(resolve => canvas.toBlob(b => resolve(b), 'image/jpeg', 0.85));
+    if(blob) return { blob, converted:true };
+    return { blob:file, converted:false }; // toBlob returned nothing — fall back rather than lose the photo
+  } catch(e){
+    console.warn('Photo format conversion failed, uploading original file instead:', e);
+    return { blob:file, converted:false };
+  }
+}
 async function uploadPhoto(file, path){
   if(!file) return null;
   try {
@@ -1514,13 +1629,18 @@ async function publishListing(){
   // For each slot: a File means a new upload; a string means an existing
   // photo URL that's being kept unchanged (only relevant when editing).
   const slots = PHOTO_SLOTS.map(s=>s.key);
-  const resolved = await Promise.all(slots.map(key=>{
+  const resolved = await Promise.all(slots.map(async key=>{
     const val = listingData.photoSlots[key];
-    if(!val) return Promise.resolve(null);
-    if(typeof val === 'string') return Promise.resolve(val); // unchanged existing photo
-    const ext = val.name.split('.').pop() || 'jpg';
+    if(!val) return null;
+    if(typeof val === 'string') return val; // unchanged existing photo
+    // Convert to JPEG regardless of source format (some phones save
+    // photos as HEIC, which displays fine on that same phone but not
+    // for other visitors on different devices) — always upload
+    // something universally viewable.
+    const jpegResult = await convertToJpegBlob(val);
+    const ext = jpegResult.converted ? 'jpg' : (val.name.split('.').pop() || 'jpg');
     const path = `${currentUserId}-${Date.now()}-${key}.${ext}`;
-    return uploadPhoto(val, path);
+    return uploadPhoto(jpegResult.blob, path);
   }));
 
   const frontIdx = PHOTO_SLOTS.findIndex(s=>s.main);
