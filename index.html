@@ -119,6 +119,8 @@ a{text-decoration:none;color:inherit;}
 
 .step-indicator{font-size:15px;font-weight:800;color:var(--brass-dark);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
 .step-title{font-size:18px;font-weight:800;margin-bottom:14px;}
+.reg-section-title{font-size:14px;font-weight:800;color:var(--brass-dark);text-transform:uppercase;letter-spacing:.03em;margin:20px 0 8px;padding-top:14px;border-top:1px solid var(--border);}
+.reg-section-title:first-of-type{border-top:none;padding-top:0;margin-top:0;}
 .field-label{font-size:13px;font-weight:700;color:var(--muted);margin:14px 0 6px;}
 .field-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-size:15px;outline:none;background:var(--surface);color:var(--ink);}
 .field-input:focus{border-color:var(--brass);}
@@ -444,7 +446,6 @@ let currentUserId = null;
 let landlordAccount = null;
 let seekerAccount = null;
 let seekerSex = '';
-let regStep = 1;
 let regData = {};
 let listingStep = 1;
 let listingData = {};
@@ -1116,95 +1117,87 @@ function handlePostTap(){
   if(!landlordAccount) openRegistration(); else openListingFlow();
 }
 function openRegistration(){
-  regStep = 1;
-  regData = {name:'',sex:'',country:'Liberia',county:'',whatsapp:'',email:'',marketingOptIn:false};
-  renderRegStep();
+  regData = {name:'',sex:'',country:'Liberia',county:'',whatsapp:'',email:'',password:'',marketingOptIn:false};
+  renderRegForm();
   el('regModal').classList.remove('hidden');
 }
 function contactFooter(){
   return `<div class="field-hint" style="text-align:center;margin-top:14px;">Need help? 📞 <a href="tel:${SITE_CONTACT.phone1Raw}">${SITE_CONTACT.phone1}</a> · <a href="tel:${SITE_CONTACT.phone2Raw}">${SITE_CONTACT.phone2}</a> · 📧 <a href="mailto:${SITE_CONTACT.email}">${SITE_CONTACT.email}</a></div>`;
 }
-function saveRegStep1Fields(){
-  const n=el('rName'); if(n) regData.name=n.value;
-  const c=el('rCountry'); if(c) regData.country=c.value;
-  const co=el('rCounty'); if(co) regData.county=co.value;
-}
-function renderRegStep(){
-  const total = 4;
-  let body = '';
-  if(regStep===1){
-    body = `
-      <div class="field-label">Name or Rental Business Name</div>
-      <input class="field-input" id="rName" value="${regData.name}" placeholder="e.g. Esther Johnson or ABC Properties">
-      <div class="field-label">Sex</div>
-      <div class="opt-row three">
-        <button class="opt-btn ${regData.sex==='Male'?'active':''}" onclick="saveRegStep1Fields();regData.sex='Male';renderRegStep();">Male</button>
-        <button class="opt-btn ${regData.sex==='Female'?'active':''}" onclick="saveRegStep1Fields();regData.sex='Female';renderRegStep();">Female</button>
-        <button class="opt-btn ${regData.sex==='Not Applicable'?'active':''}" onclick="saveRegStep1Fields();regData.sex='Not Applicable';renderRegStep();">Not Applicable</button>
-      </div>
-      <div class="field-label">Country</div>
-      <input class="field-input" id="rCountry" value="${regData.country}">
-      <div class="field-label">County of residence</div>
-      <select class="field-input" id="rCounty" onchange="saveRegStep1Fields()">
-        <option value="">Select a county</option>
-        ${COUNTIES.map(c=>`<option value="${c}" ${regData.county===c?'selected':''}>${c}</option>`).join('')}
-      </select>`;
-  } else if(regStep===2){
-    body = `
-      <div class="field-label">WhatsApp number</div>
-      <input class="field-input" id="rWa" value="${regData.whatsapp}" placeholder="+231 77 000 0000" oninput="regData.whatsapp=this.value">
-      <div class="field-label">Email address</div>
-      <input class="field-input" id="rEmail" type="email" value="${regData.email}" placeholder="you@example.com">
-      <div class="field-label">Password</div>
-      <input class="field-input" id="rPassword" type="password" value="${regData.password||''}" placeholder="Min 8 characters">
-      <div class="field-hint">You'll use this email and password to log back in on any device — no need to register again.</div>
-      <div class="agree-row">
-        <input type="checkbox" id="rMarketing" ${regData.marketingOptIn?'checked':''}>
-        <label for="rMarketing">📧 I would like to receive updates and marketing communication from Places4Lease.</label>
-      </div>`;
-  } else if(regStep===3){
-    body = `
-      <div class="disclaimer-box">${DISCLAIMER_HTML}</div>
-      <div class="agree-row">
-        <input type="checkbox" id="rAgree">
-        <label for="rAgree">${AGREE_TEXT}</label>
-      </div>`;
-  } else if(regStep===4){
-    body = `<div class="verify-ok">🎉 Almost done — tap below to finish creating your account.</div>`;
-  }
+function renderRegForm(){
   el('regSheet').innerHTML = `
     <button class="modal-close" onclick="closeModal('regModal')">✕</button>
-    <div class="step-indicator">Landlord account · Step ${regStep} of ${total}</div>
-    <div class="step-title">${['Tell us about you','Your contact numbers','Review &amp; agree','Finish'][regStep-1]}</div>
-    ${body}
-    <div class="step-nav">
-      ${regStep>1?`<button class="btn btn-ghost" style="flex:0 0 auto;" onclick="changeRegStep(-1)">← Back</button>`:''}
-      ${regStep<total?`<button class="btn btn-brass" onclick="changeRegStep(1)">Continue →</button>`:`<button class="btn btn-whatsapp" onclick="createAccount()">Create account</button>`}
+    <div class="step-title" style="margin-bottom:14px;">🏠 Create your landlord account</div>
+
+    <div class="reg-section-title">1. About you</div>
+    <div class="field-label">Name or Rental Business Name</div>
+    <input class="field-input" id="rName" value="${regData.name}" placeholder="e.g. Esther Johnson or ABC Properties">
+    <div class="field-label">Sex</div>
+    <select class="field-input" id="rSex">
+      <option value="">Select</option>
+      <option value="Male" ${regData.sex==='Male'?'selected':''}>Male</option>
+      <option value="Female" ${regData.sex==='Female'?'selected':''}>Female</option>
+      <option value="Not Applicable" ${regData.sex==='Not Applicable'?'selected':''}>Not Applicable</option>
+    </select>
+    <div class="field-label">Country</div>
+    <input class="field-input" id="rCountry" value="${regData.country}">
+    <div class="field-label">County of residence</div>
+    <select class="field-input" id="rCounty">
+      <option value="">Select a county</option>
+      ${COUNTIES.map(c=>`<option value="${c}" ${regData.county===c?'selected':''}>${c}</option>`).join('')}
+    </select>
+
+    <div class="reg-section-title">2. Contact &amp; login</div>
+    <div class="field-label">WhatsApp number</div>
+    <input class="field-input" id="rWa" value="${regData.whatsapp}" placeholder="+231 77 000 0000">
+    <div class="field-label">Email address</div>
+    <input class="field-input" id="rEmail" type="email" value="${regData.email}" placeholder="you@example.com">
+    <div class="field-label">Password</div>
+    <input class="field-input" id="rPassword" type="password" placeholder="Min 8 characters">
+    <div class="field-label">Confirm password</div>
+    <input class="field-input" id="rPasswordConfirm" type="password" placeholder="Re-enter your password">
+    <div class="field-hint">You'll use this email and password to log back in on any device — no need to register again.</div>
+    <div class="agree-row">
+      <input type="checkbox" id="rMarketing" ${regData.marketingOptIn?'checked':''}>
+      <label for="rMarketing">📧 I would like to receive updates and marketing communication from Places4Lease.</label>
     </div>
+
+    <div class="reg-section-title">3. Safety &amp; terms</div>
+    <div class="disclaimer-box">${DISCLAIMER_HTML}</div>
+    <div class="agree-row">
+      <input type="checkbox" id="rAgree">
+      <label for="rAgree">${AGREE_TEXT}</label>
+    </div>
+
+    <div id="regErr" class="field-hint" style="color:#A33;display:none;margin-top:10px;"></div>
+    <button class="btn btn-whatsapp" style="width:100%;margin-top:16px;" onclick="submitRegistration()">Create account</button>
     ${contactFooter()}`;
 }
-function changeRegStep(dir){
-  if(dir>0){
-    if(regStep===1){
-      regData.name = el('rName').value.trim();
-      regData.country = el('rCountry').value.trim();
-      regData.county = el('rCounty').value;
-      if(!regData.name || !regData.sex || !regData.county){ showToast('Please complete name, sex and county'); return; }
-    }
-    if(regStep===2){
-      regData.whatsapp = el('rWa').value.trim();
-      regData.email = el('rEmail').value.trim();
-      regData.password = el('rPassword').value;
-      regData.marketingOptIn = el('rMarketing').checked;
-      if(!regData.whatsapp || !regData.email){ showToast('Please fill in your WhatsApp number and email'); return; }
-      if(regData.password.length < 8){ showToast('Password must be at least 8 characters'); return; }
-    }
-    if(regStep===3){
-      if(!el('rAgree').checked){ showToast('Please check the box to agree before continuing'); return; }
-    }
-  }
-  regStep += dir;
-  renderRegStep();
+function regShowError(msg){
+  const e = el('regErr');
+  e.textContent = msg;
+  e.style.display = 'block';
+  showToast(msg);
+}
+async function submitRegistration(){
+  regData.name = el('rName').value.trim();
+  regData.sex = el('rSex').value;
+  regData.country = el('rCountry').value.trim();
+  regData.county = el('rCounty').value;
+  regData.whatsapp = el('rWa').value.trim();
+  regData.email = el('rEmail').value.trim();
+  regData.password = el('rPassword').value;
+  const passwordConfirm = el('rPasswordConfirm').value;
+  regData.marketingOptIn = el('rMarketing').checked;
+
+  if(!regData.name || !regData.sex || !regData.county){ regShowError('Please complete name, sex and county'); return; }
+  if(!regData.whatsapp || !regData.email){ regShowError('Please fill in your WhatsApp number and email'); return; }
+  if(regData.password.length < 8){ regShowError('Password must be at least 8 characters'); return; }
+  if(regData.password !== passwordConfirm){ regShowError('Passwords do not match — please re-enter'); return; }
+  if(!el('rAgree').checked){ regShowError('Please check the box to agree to the safety terms'); return; }
+
+  el('regErr').style.display = 'none';
+  await createAccount();
 }
 async function createAccount(){
   // Attach real email+password credentials to this session (upgrades the
