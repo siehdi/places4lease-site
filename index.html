@@ -123,6 +123,9 @@ a{text-decoration:none;color:inherit;}
 .reg-section-title:first-of-type{border-top:none;padding-top:0;margin-top:0;}
 .field-label{font-size:13px;font-weight:700;color:var(--muted);margin:14px 0 6px;}
 .field-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-size:15px;outline:none;background:var(--surface);color:var(--ink);}
+.pw-wrap{position:relative;}
+.pw-wrap .field-input{padding-right:44px;}
+.pw-toggle{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;padding:6px;color:var(--muted);line-height:1;}
 .field-input:focus{border-color:var(--brass);}
 .field-hint{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.4;}
 .opt-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px;}
@@ -452,6 +455,11 @@ let listingData = {};
 let editingListingId = null;
 
 function el(id){return document.getElementById(id);}
+function togglePwVisibility(inputId, btn){
+  const input = el(inputId);
+  if(input.type === 'password'){ input.type = 'text'; btn.textContent = '🙈'; }
+  else { input.type = 'password'; btn.textContent = '👁'; }
+}
 function escapeHtml(str){
   if(str==null) return '';
   return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -971,7 +979,7 @@ function renderProfile(){
         <div class="field-label">Email address</div>
         <input class="field-input" id="llLoginEmail" type="email" placeholder="you@example.com">
         <div class="field-label">Password</div>
-        <input class="field-input" id="llLoginPass" type="password" placeholder="Your password">
+        <div class="pw-wrap"><input class="field-input" id="llLoginPass" type="password" placeholder="Your password"><button type="button" class="pw-toggle" onclick="togglePwVisibility('llLoginPass',this)">👁</button></div>
         <button class="btn btn-brass" style="display:block;width:100%;margin-top:10px;" onclick="loginLandlord()">Log in</button>
       </div>
       <div style="border-top:1px solid var(--border);margin:14px 0;"></div>
@@ -999,7 +1007,7 @@ function renderProfile(){
         <div class="field-label">Email address</div>
         <input class="field-input" id="skLoginEmail" type="email" placeholder="you@example.com">
         <div class="field-label">Password</div>
-        <input class="field-input" id="skLoginPass" type="password" placeholder="Your password">
+        <div class="pw-wrap"><input class="field-input" id="skLoginPass" type="password" placeholder="Your password"><button type="button" class="pw-toggle" onclick="togglePwVisibility('skLoginPass',this)">👁</button></div>
         <button class="btn btn-brass" style="display:block;width:100%;margin-top:10px;" onclick="loginSeeker()">Log in</button>
       </div>
       <div style="border-top:1px solid var(--border);margin:14px 0;"></div>
@@ -1016,7 +1024,7 @@ function renderProfile(){
       <div class="field-label">Email address</div>
       <input class="field-input" id="skEmail" type="email" placeholder="you@example.com">
       <div class="field-label">Password</div>
-      <input class="field-input" id="skPassword" type="password" placeholder="Min 8 characters">
+      <div class="pw-wrap"><input class="field-input" id="skPassword" type="password" placeholder="Min 8 characters"><button type="button" class="pw-toggle" onclick="togglePwVisibility('skPassword',this)">👁</button></div>
       <div class="agree-row">
         <input type="checkbox" id="skMarketing">
         <label for="skMarketing">📧 I would like to receive updates and marketing communication from Places4Lease.</label>
@@ -1234,9 +1242,9 @@ function renderRegForm(){
     <div class="field-label">Email address</div>
     <input class="field-input" id="rEmail" type="email" value="${regData.email}" placeholder="you@example.com">
     <div class="field-label">Password</div>
-    <input class="field-input" id="rPassword" type="password" placeholder="Min 8 characters">
+    <div class="pw-wrap"><input class="field-input" id="rPassword" type="password" placeholder="Min 8 characters"><button type="button" class="pw-toggle" onclick="togglePwVisibility('rPassword',this)">👁</button></div>
     <div class="field-label">Confirm password</div>
-    <input class="field-input" id="rPasswordConfirm" type="password" placeholder="Re-enter your password">
+    <div class="pw-wrap"><input class="field-input" id="rPasswordConfirm" type="password" placeholder="Re-enter your password"><button type="button" class="pw-toggle" onclick="togglePwVisibility('rPasswordConfirm',this)">👁</button></div>
     <div class="field-hint">You'll use this email and password to log back in on any device — no need to register again.</div>
     <div class="agree-row">
       <input type="checkbox" id="rMarketing" ${regData.marketingOptIn?'checked':''}>
